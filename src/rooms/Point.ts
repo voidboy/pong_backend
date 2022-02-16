@@ -11,4 +11,14 @@ export class Point extends Schema {
     this.x = x;
     this.y = y;
   }
+
+  get norm(): number {
+    return Math.sqrt(this.x * this.x + this.y * this.y);
+  }
+
+  set norm(value: number) {
+    const factor: number = value / this.norm;
+    this.x *= factor;
+    this.y *= factor;
+  }
 }
