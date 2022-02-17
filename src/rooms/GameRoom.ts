@@ -3,8 +3,6 @@ import { GameState } from "./GameState";
 
 export class GameRoom extends Room<GameState> {
   position: boolean = false;
-  idLeft: number;
-  idRight: number;
 
   onCreate(options: any) {
     this.setState(new GameState());
@@ -20,18 +18,17 @@ export class GameRoom extends Room<GameState> {
       // console.log("right -> ", message);
       this.state.rightPlayer.pos.y = message;
     });
-    this.onMessage("idleft", (client, message) => {
-      console.log("id -> ", message);
-      this.idLeft = message;
+    this.onMessage("id", (client, message) => {
+      console.log(this.state.ids, "HERE2");
+      this.position
+        ? (this.state.ids.idLeft = message)
+        : (this.state.ids.idRight = message);
     });
-    this.onMessage("idright", (client, message) => {
-      console.log("id -> ", message);
-      this.idRight = message;
-    });
+    console.log("A gameRoom is created !");
   }
 
   onJoin(client: Client, options: any) {
-    console.log(client.sessionId, "join!");
+    console.log(client.sessionId, "gameRoom -> join!");
   }
 
   onLeave(client: Client, consented: boolean) {

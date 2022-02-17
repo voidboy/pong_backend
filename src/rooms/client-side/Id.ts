@@ -13,9 +13,13 @@ import {
   SetSchema,
   DataChange,
 } from "@colyseus/schema";
-import { Point } from "./Point";
 
-export class Player extends Schema {
-  @type(Point) public pos: Point = new Point();
-  @type("number") public score!: number;
+export class Id extends Schema {
+  constructor() {
+    super();
+    this.idRight = 0;
+    this.idLeft = 0;
+  }
+  @type("number") public idLeft: number = 0;
+  @type("number") public idRight: number = 0;
 }
