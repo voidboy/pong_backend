@@ -114,7 +114,6 @@ export class MatchMakingRoom extends Room {
         });
         group.joinedClients.map(async (client) => {
           const reservation = await matchMaker.reserveSeatFor(newRoom, {});
-          console.log("HERE id -> ", client.id);
           client.client.send("seat", {
             reservation: reservation,
             id: client.id,

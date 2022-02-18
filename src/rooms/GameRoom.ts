@@ -19,7 +19,9 @@ export class GameRoom extends Room<GameState> {
       this.state.rightPlayer.pos.y = message;
     });
     this.onMessage("id", (client, message) => {
-      console.log(this.state.ids, "HERE2");
+      console.log("ID -> ", this.state.ids);
+      console.log("ID -> ", this.position);
+
       this.position
         ? (this.state.ids.idLeft = message)
         : (this.state.ids.idRight = message);
@@ -28,7 +30,7 @@ export class GameRoom extends Room<GameState> {
   }
 
   onJoin(client: Client, options: any) {
-    console.log(client.sessionId, "gameRoom -> join!");
+    console.log(this.roomId, "gameRoom -> join!");
   }
 
   onLeave(client: Client, consented: boolean) {
