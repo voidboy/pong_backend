@@ -91,10 +91,19 @@ export class GameRoom extends Room<GameState> {
         });
       }
     });
+    this.onMessage("id", (client, message) => {
+      console.log("ID -> ", this.state.ids);
+      console.log("ID -> ", this.position);
+
+      this.position
+        ? (this.state.ids.idLeft = message)
+        : (this.state.ids.idRight = message);
+    });
+    console.log("A gameRoom is created !");
   }
 
   onJoin(client: Client, options: any) {
-    console.log(client.sessionId, "join!");
+    console.log(this.roomId, "gameRoom -> join!");
   }
 
   onLeave(client: Client, consented: boolean) {

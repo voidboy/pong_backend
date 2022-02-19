@@ -5,6 +5,7 @@ import { monitor } from "@colyseus/monitor";
  * Import your Room files
  */
 import { GameRoom } from "./rooms/GameRoom";
+import { MatchMakingRoom } from "./rooms/MatchMakingRoom";
 
 export default Arena({
     getId: () => "Your Colyseus App",
@@ -13,7 +14,8 @@ export default Arena({
         /**
          * Define your room handlers:
          */
-        gameServer.define("gameRoom", GameRoom)
+        gameServer.define("gameRoom", GameRoom);
+        gameServer.define("MatchMakingRoom", MatchMakingRoom);
     },
 
   /*
