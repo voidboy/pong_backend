@@ -13,8 +13,7 @@ export default Arena({
         /**
          * Define your room handlers:
          */
-        gameServer.define("gameRoom", GameRoom);
-
+        gameServer.define("gameRoom", GameRoom)
     },
 
   /*
