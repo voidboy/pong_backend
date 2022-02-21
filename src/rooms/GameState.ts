@@ -16,9 +16,17 @@ export class GameState extends Schema {
   ids: Id;
 
   constructor(
-    leftPlayer = new Player(new Point(CONF.PADDLE_WIDTH, CONF.GAME_HEIGHT / 2)),
+    leftPlayer = new Player(
+      new Point(
+        CONF.PADDLE_WIDTH + (CONF.PADDLE_WIDTH / 2),
+        CONF.GAME_HEIGHT / 2
+      )
+    ),
     rightPlayer = new Player(
-      new Point(CONF.GAME_WIDTH - CONF.PADDLE_WIDTH * 2, CONF.GAME_HEIGHT / 2)
+      new Point(
+        CONF.GAME_WIDTH - (CONF.PADDLE_WIDTH + CONF.PADDLE_WIDTH / 2), 
+        CONF.GAME_HEIGHT / 2
+      )
     ),
     ball = new Ball(
       new Point(CONF.GAME_WIDTH / 2, CONF.GAME_HEIGHT / 2),

@@ -13,6 +13,8 @@ import {
   playerBot,
   playerRight,
   playerLeft,
+  debugPlayer,
+  debugBall,
 } from "./utils";
 
 export class GameRoom extends Room<GameState> {
@@ -27,7 +29,11 @@ export class GameRoom extends Room<GameState> {
 
     ball.pos.x += ball.velocity.x * (1 / 60);
     ball.pos.y += ball.velocity.y * (1 / 60);
-    if (ballTop(ball) <= 0 || ballBot(ball) >= CONF.GAME_HEIGHT) {
+    if (ballTop(ball) <= 0) {
+      if (ball.pos.y < 0) ball.pos.y = 0;
+      ball.velocity.y *= -1;
+    } else if (ballBot(ball) >= CONF.GAME_HEIGHT) {
+      if (ball.pos.y > CONF.GAME_HEIGHT) ball.pos.y = CONF.GAME_HEIGHT;
       ball.velocity.y *= -1;
     } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
       Lplayer.score += 1;
@@ -38,30 +44,32 @@ export class GameRoom extends Room<GameState> {
       ballReset(ball);
     } else if (
       playerTop(Lplayer) < ballBot(ball) &&
-      playerBot(Lplayer) > ballTop(ball)
+      playerBot(Lplayer) > ballTop(ball) &&
+      playerRight(Lplayer) >= ballLeft(ball)
     ) {
+      if (playerRight(Lplayer) > ballLeft(ball))
+        ball.pos.x = playerRight(Lplayer) + CONF.BALL_WIDTH / 2;
       /* if a collision happens, ball may be "inside" the paddle due
         to his deplacement computation (time * velocity), to prevent that
         we must put back the ball in front of the paddle */
-      if (playerRight(Lplayer) >= ballLeft(ball)) {
-        const bounce: number = ball.pos.y - Lplayer.pos.y;
-        //ball.pos.x = playerRight(Lplayer) + CONF.BALL_WIDTH / 2 + 1;
-        /* add %5 to ball's speed each time it hits a player */
-        ball.velocity.x *= -1.05;
-        ball.velocity.y =
-          CONF.BALL_YVELOCITY * (bounce / (CONF.PADDLE_HEIGHT / 2));
-      }
+      const bounce: number = ball.pos.y - Lplayer.pos.y;
+      //ball.pos.x = playerRight(Lplayer) + CONF.BALL_WIDTH / 2 + 1;
+      /* add %5 to ball's speed each time it hits a player */
+      ball.velocity.x *= -1.05;
+      ball.velocity.y =
+        CONF.BALL_YVELOCITY * (bounce / (CONF.PADDLE_HEIGHT / 2));
     } else if (
       playerTop(Rplayer) < ballBot(ball) &&
-      playerBot(Rplayer) > ballTop(ball)
+      playerBot(Rplayer) > ballTop(ball) &&
+      playerLeft(Rplayer) <= ballRight(ball)
     ) {
-      if (playerLeft(Rplayer) <= ballRight(ball)) {
-        const bounce: number = ball.pos.y - Rplayer.pos.y;
-        //ball.pos.x = playerLeft(Rplayer) - CONF.BALL_WIDTH / 2 - 2;
-        ball.velocity.x *= -1.05;
-        ball.velocity.y =
-          CONF.BALL_YVELOCITY * (bounce / (CONF.PADDLE_HEIGHT / 2));
-      }
+      if (playerLeft(Rplayer) <= ballRight(ball))
+        ball.pos.x = playerLeft(Rplayer) - CONF.BALL_WIDTH / 2;
+      const bounce: number = ball.pos.y - Rplayer.pos.y;
+      //ball.pos.x = playerLeft(Rplayer) - CONF.BALL_WIDTH / 2 - 2;
+      ball.velocity.x *= -1.05;
+      ball.velocity.y =
+        CONF.BALL_YVELOCITY * (bounce / (CONF.PADDLE_HEIGHT / 2));
     }
   }
 
