@@ -8,16 +8,15 @@ import { GameRoom } from "./rooms/GameRoom";
 import { MatchMakingRoom } from "./rooms/MatchMakingRoom";
 
 export default Arena({
-    getId: () => "Your Colyseus App",
+  getId: () => "Your Colyseus App",
 
-    initializeGameServer: (gameServer) => {
-        /**
-         * Define your room handlers:
-         */
-        gameServer.define("gameRoom", GameRoom);
-        gameServer.define("MatchMakingRoom", MatchMakingRoom);
-
-    },
+  initializeGameServer: (gameServer) => {
+    /**
+     * Define your room handlers:
+     */
+    gameServer.define("gameRoom", GameRoom);
+    gameServer.define("MatchMakingRoom", MatchMakingRoom);
+  },
 
   /*
     initializeExpress: (app) => {
@@ -29,9 +28,9 @@ export default Arena({
     },
    */
 
-    beforeListen: () => {
-        /**
-         * Before before gameServer.listen() is called.
-         */
-    }
+  beforeListen: () => {
+    /**
+     * Before before gameServer.listen() is called.
+     */
+  },
 });

@@ -1,4 +1,5 @@
 import { Room, matchMaker, Client } from "colyseus";
+import { post } from "httpie";
 import { GameState } from "./GameState";
 
 export class GameRoom extends Room<GameState> {
@@ -32,13 +33,31 @@ export class GameRoom extends Room<GameState> {
 
   onJoin(client: Client, options: any) {
     console.log(client.sessionId, "join!");
+    this.disconnect();
   }
 
   onLeave(client: Client, consented: boolean) {
     console.log(client.sessionId, "left!");
   }
 
-  onDispose() {
+  async onDispose() {
+    // try {
+    //   const res = await post("http://localhost:3000/api/game/create-game", {
+    //     headers: {
+    //       authorization: "bearer " + this.state.leftPlayer.token,
+    //     },
+    //     body: {
+    //       category: this.state.category,
+    //       user1: this.state.leftPlayer.id,
+    //       user2: this.state.rightPlayer.id,
+    //       score_w: this.state.leftPlayer.score,
+    //       score_l: this.state.rightPlayer.score,
+    //     },
+    //   });
+    //   console.log("game input :", res);
+    // } catch (e) {
+    //   console.log(e);
+    // }
     console.log("room", this.roomId, "disposing...");
   }
 }
