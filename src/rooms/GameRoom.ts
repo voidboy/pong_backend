@@ -94,6 +94,7 @@ export class GameRoom extends Room<GameState> {
       if (message === "left") this.leftReady = true;
       if (message === "right") this.rightReady = true;
       if (this.rightReady && this.leftReady) {
+        this.broadcast("ready", {});
         this.setSimulationInterval((deltatime) => {
           this.simulate();
         });
@@ -107,18 +108,21 @@ export class GameRoom extends Room<GameState> {
         ? (this.state.ids.idLeft = message)
         : (this.state.ids.idRight = message);
     });
+    this.onMessage("cancelgame", (client, message) => {
+      this.broadcast("cancelgame", message);
+    });
     console.log("A gameRoom is created !");
   }
 
   onJoin(client: Client, options: any) {
-    console.log(this.roomId, "gameRoom -> join!");
+    console.log(this.roomId, " - GameRoom - join!");
   }
 
   onLeave(client: Client, consented: boolean) {
-    console.log(client.sessionId, "left!");
+    console.log(client.sessionId, "- GameRoom - left!");
   }
 
   onDispose() {
-    console.log("room", this.roomId, "disposing...");
+    console.log("room", this.roomId, "- GameRoom - disposing...");
   }
 }
