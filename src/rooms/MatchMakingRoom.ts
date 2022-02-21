@@ -10,6 +10,7 @@ interface ClientInfo {
   waitingTime: number;
   group?: MatchGroup;
   rank?: number;
+  rankRange?: number;
   confirmed: boolean;
   id?: number;
 }
@@ -26,20 +27,19 @@ export class MatchMakingRoom extends Room {
   }
 
   onCreate() {
-    this.onMessage("confirm", (client: Client, message: any) => {
-      const foundClient = this.AllClients.find(
-        (AllClient) => AllClient.client === client
-      );
-      if (foundClient && foundClient.group) {
-        foundClient.confirmed = true;
-        foundClient.client.leave();
-      }
-    });
+    // this.onMessage("confirm", (client: Client, message: any) => {
+    //   const foundClient = this.AllClients.find(
+    //     (AllClient) => AllClient.client === client
+    //   );
+    //   if (foundClient && foundClient.group) {
+    //     foundClient.confirmed = true;
+    //     foundClient.client.leave();
+    //   }
+    // });
     this.onMessage("id", (client, message) => {
       const foundClient = this.AllClients.find(
         (AllClient) => AllClient.client === client
       );
-      console.log("id -> ", message);
       foundClient.id = message;
     });
     this.setSimulationInterval(() => this.makeGroups(), 2000);
@@ -79,7 +79,8 @@ export class MatchMakingRoom extends Room {
 
       // Maybe implement a MaxWaitingTime and force the
       // client to join a group with high diff rank
-      if (client.waitingTime > 10000) true;
+      if (client.waitingTime > 30000)
+        console.log("client[", i, "].waitingTime > 30sec");
 
       // Add client to group and add group to client
       client.group = currentGroup;
@@ -109,9 +110,7 @@ export class MatchMakingRoom extends Room {
     this.groups.map(async (group) => {
       if (group.ready) {
         console.log("MatchMakingRoom -> A group is ready, creating gameRooom");
-        const newRoom = await matchMaker.createRoom("gameRoom", {
-          /* Option: any */
-        });
+        const newRoom = await matchMaker.createRoom("gameRoom", {});
         group.joinedClients.map(async (client) => {
           const reservation = await matchMaker.reserveSeatFor(newRoom, {});
           client.client.send("seat", {
