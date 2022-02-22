@@ -1,14 +1,84 @@
-import { Room, matchMaker, Client } from "colyseus";
-import { post } from "httpie";
+import { Room, Client } from "colyseus";
 import { GameState } from "./GameState";
+import { Ball } from "./Ball";
+import { Player } from "./Player";
+import * as CONF from "./GameConfig";
+import {
+  ballTop,
+  ballBot,
+  ballRight,
+  ballReset,
+  ballLeft,
+  playerTop,
+  playerBot,
+  playerRight,
+  playerLeft,
+  debugPlayer,
+  debugBall,
+} from "./utils";
+import { post } from "httpie";
 
 export class GameRoom extends Room<GameState> {
-  position: boolean = false;
-  idLeft: number;
-  idRight: number;
+  private leftReady: boolean = false;
+  private rightReady: boolean = false;
+  private position: boolean = false;
+
+  private simulate() {
+    const Lplayer: Player = this.state.leftPlayer;
+    const Rplayer: Player = this.state.rightPlayer;
+    const ball: Ball = this.state.ball;
+
+    ball.pos.x += ball.velocity.x * (1 / 60);
+    ball.pos.y += ball.velocity.y * (1 / 60);
+    if (ballTop(ball) <= 0) {
+      if (ball.pos.y < 0) ball.pos.y = 0;
+      ball.velocity.y *= -1;
+    } else if (ballBot(ball) >= CONF.GAME_HEIGHT) {
+      if (ball.pos.y > CONF.GAME_HEIGHT) ball.pos.y = CONF.GAME_HEIGHT;
+      ball.velocity.y *= -1;
+    } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
+      Lplayer.score += 1;
+      ballReset(ball);
+    } else if (ballLeft(ball) <= 0) {
+      /* right player scored a point */
+      Rplayer.score += 1;
+      ballReset(ball);
+    } else if (
+      playerTop(Lplayer) < ballBot(ball) &&
+      playerBot(Lplayer) > ballTop(ball) &&
+      playerRight(Lplayer) >= ballLeft(ball)
+    ) {
+      if (playerRight(Lplayer) > ballLeft(ball))
+        ball.pos.x = playerRight(Lplayer) + CONF.BALL_WIDTH / 2;
+      /* if a collision happens, ball may be "inside" the paddle due
+        to his deplacement computation (time * velocity), to prevent that
+        we must put back the ball in front of the paddle */
+      const bounce: number = ball.pos.y - Lplayer.pos.y;
+      //ball.pos.x = playerRight(Lplayer) + CONF.BALL_WIDTH / 2 + 1;
+      /* add %5 to ball's speed each time it hits a player */
+      ball.velocity.x *= -1.05;
+      ball.velocity.y =
+        CONF.BALL_YVELOCITY * (bounce / (CONF.PADDLE_HEIGHT / 2));
+    } else if (
+      playerTop(Rplayer) < ballBot(ball) &&
+      playerBot(Rplayer) > ballTop(ball) &&
+      playerLeft(Rplayer) <= ballRight(ball)
+    ) {
+      if (playerLeft(Rplayer) <= ballRight(ball))
+        ball.pos.x = playerLeft(Rplayer) - CONF.BALL_WIDTH / 2;
+      const bounce: number = ball.pos.y - Rplayer.pos.y;
+      //ball.pos.x = playerLeft(Rplayer) - CONF.BALL_WIDTH / 2 - 2;
+      ball.velocity.x *= -1.05;
+      ball.velocity.y =
+        CONF.BALL_YVELOCITY * (bounce / (CONF.PADDLE_HEIGHT / 2));
+    }
+  }
 
   onCreate(options: any) {
     this.setState(new GameState());
+    /* increase patchrate to reach 60 FPS */
+    this.setPatchRate(16);
+
     this.onMessage("position", (client, message) => {
       client.send("position", this.position ? "right" : "left");
       this.position = !this.position;
@@ -21,43 +91,69 @@ export class GameRoom extends Room<GameState> {
       // console.log("right -> ", message);
       this.state.rightPlayer.pos.y = message;
     });
-    this.onMessage("idleft", (client, message) => {
-      console.log("id -> ", message);
-      this.idLeft = message;
+    this.onMessage("ready", (client, message) => {
+      if (message === "left") this.leftReady = true;
+      if (message === "right") this.rightReady = true;
+      if (this.rightReady && this.leftReady) {
+        this.setSimulationInterval((deltatime) => {
+          this.simulate();
+        });
+      }
     });
-    this.onMessage("idright", (client, message) => {
-      console.log("id -> ", message);
-      this.idRight = message;
+    this.onMessage("id", (client, message) => {
+      console.log("ID -> ", this.state.ids);
+      console.log("ID -> ", this.position);
+
+      this.position
+        ? (this.state.ids.idLeft = message)
+        : (this.state.ids.idRight = message);
     });
+    console.log("A gameRoom is created !");
   }
 
   onJoin(client: Client, options: any) {
-    console.log(client.sessionId, "join!");
-    this.disconnect();
+    console.log(client.sessionId, "gameRoom -> join!");
   }
 
-  onLeave(client: Client, consented: boolean) {
+  endGame() {
+    this.onMessage("catgory", (client, message) => {
+      this.state.category = message;
+    });
+    this.onMessage("token", (client, message) => {
+      this.state.token = message;
+    });
+    if (this.state.leftPlayer.score < this.state.rightPlayer.score) {
+      this.state.score_w = this.state.rightPlayer.score;
+      this.state.score_l = this.state.leftPlayer.score;
+    } else {
+      this.state.score_w = this.state.leftPlayer.score;
+      this.state.score_l = this.state.rightPlayer.score;
+    }
+  }
+
+  async onLeave(client: Client, consented: boolean) {
+    try {
+      const reconnection = await this.allowReconnection(client, 10);
+    } catch (e) {
+      this.disconnect();
+      client.send("disconnected");
+    }
     console.log(client.sessionId, "left!");
   }
 
   async onDispose() {
-    // try {
-    //   const res = await post("http://localhost:3000/api/game/create-game", {
-    //     headers: {
-    //       authorization: "bearer " + this.state.leftPlayer.token,
-    //     },
-    //     body: {
-    //       category: this.state.category,
-    //       user1: this.state.leftPlayer.id,
-    //       user2: this.state.rightPlayer.id,
-    //       score_w: this.state.leftPlayer.score,
-    //       score_l: this.state.rightPlayer.score,
-    //     },
-    //   });
-    //   console.log("game input :", res);
-    // } catch (e) {
-    //   console.log(e);
-    // }
+    // const res = await post('http://localhost:3000/api/game/create-game', {
+    //   headers: {
+    //     token: 'bearer ' + this.state.token,
+    //   },
+    //   body: {
+    //     category: this.state.category,
+    //     user1: this.state.ids.idLeft,
+    //     user2: this.state.ids.idRight,
+    //     score_w: this.state.score_w,
+    //     score_l: this.state.score_l,
+    //   },
+    // });
     console.log("room", this.roomId, "disposing...");
   }
 }
