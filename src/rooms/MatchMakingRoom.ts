@@ -12,7 +12,7 @@ interface ClientInfo {
   rank?: number;
   rankRange?: number;
   confirmed: boolean;
-  id?: number;
+  data?: any;
 }
 
 export class MatchMakingRoom extends Room {
@@ -36,12 +36,16 @@ export class MatchMakingRoom extends Room {
     //     foundClient.client.leave();
     //   }
     // });
+
+    // NOT USED CARE ===>
     this.onMessage("id", (client, message) => {
       const foundClient = this.AllClients.find(
         (AllClient) => AllClient.client === client
       );
-      foundClient.id = message;
+      console.log("On message id -> ", message);
+      foundClient.data = message;
     });
+    // <===
     this.setSimulationInterval(() => this.makeGroups(), 2000);
   }
 
@@ -115,8 +119,9 @@ export class MatchMakingRoom extends Room {
           const reservation = await matchMaker.reserveSeatFor(newRoom, {});
           client.client.send("seat", {
             reservation: reservation,
-            id: client.id,
+            data: client.data,
           });
+          client.client.leave();
         });
       }
     });

@@ -101,12 +101,16 @@ export class GameRoom extends Room<GameState> {
       }
     });
     this.onMessage("id", (client, message) => {
-      console.log("ID -> ", this.state.ids);
-      console.log("ID -> ", this.position);
-
-      this.position
-        ? (this.state.ids.idLeft = message)
-        : (this.state.ids.idRight = message);
+      console.log("ID POS -> ", this.position);
+      if (this.position) {
+        this.state.dataLeft.id = message.id;
+        this.state.dataLeft.avatar = message.avatar;
+        this.state.dataLeft.nickname = message.nickname;
+      } else {
+        this.state.dataRight.id = message.id;
+        this.state.dataRight.avatar = message.avatar;
+        this.state.dataRight.nickname = message.nickname;
+      }
     });
     this.onMessage("cancelgame", (client, message) => {
       this.broadcast("cancelgame", message);
