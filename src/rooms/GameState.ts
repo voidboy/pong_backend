@@ -4,6 +4,8 @@ import { Ball } from "./Ball";
 import { Point } from "./Point";
 import * as CONF from "./GameConfig";
 import { Id } from "./Id";
+import { GameCategory } from "/Users/fgomez/Desktop/ft_transcendense/api_infinity/src/database/entities/game.entity";
+import { GameRoom } from "./GameRoom";
 
 export class GameState extends Schema {
   @type(Player)
@@ -15,11 +17,12 @@ export class GameState extends Schema {
   @type(Id)
   ids: Id;
   @type("string")
-  category: string;
   token: string;
   @type("number")
   score_w: number;
   score_l: number;
+
+  category: GameCategory;
 
   constructor(
     leftPlayer = new Player(

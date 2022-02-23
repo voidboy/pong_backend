@@ -72,6 +72,15 @@ export class GameRoom extends Room<GameState> {
       ball.velocity.y =
         CONF.BALL_YVELOCITY * (bounce / (CONF.PADDLE_HEIGHT / 2));
     }
+    if (Lplayer.score == 11) {
+      this.state.score_w = Lplayer.score;
+      this.state.score_l = Rplayer.score;
+      this.disconnect();
+    } else if (Rplayer.score == 11) {
+      this.state.score_w = Rplayer.score;
+      this.state.score_l = Lplayer.score;
+      this.disconnect();
+    }
   }
 
   onCreate(options: any) {
@@ -86,10 +95,12 @@ export class GameRoom extends Room<GameState> {
     this.onMessage("moveleft", (client, message) => {
       // console.log("left -> ", message);
       this.state.leftPlayer.pos.y = message;
+      this.state.leftPlayer.id = client.sessionId;
     });
     this.onMessage("moveright", (client, message) => {
       // console.log("right -> ", message);
       this.state.rightPlayer.pos.y = message;
+      this.state.rightPlayer.id = client.sessionId;
     });
     this.onMessage("ready", (client, message) => {
       if (message === "left") this.leftReady = true;
@@ -108,6 +119,12 @@ export class GameRoom extends Room<GameState> {
         ? (this.state.ids.idLeft = message)
         : (this.state.ids.idRight = message);
     });
+    this.onMessage("category", (client, message) => {
+      this.state.category = message;
+    });
+    this.onMessage("token", (client, message) => {
+      this.state.token = message;
+    });
     console.log("A gameRoom is created !");
   }
 
@@ -115,26 +132,17 @@ export class GameRoom extends Room<GameState> {
     console.log(client.sessionId, "gameRoom -> join!");
   }
 
-  endGame() {
-    this.onMessage("catgory", (client, message) => {
-      this.state.category = message;
-    });
-    this.onMessage("token", (client, message) => {
-      this.state.token = message;
-    });
-    if (this.state.leftPlayer.score < this.state.rightPlayer.score) {
-      this.state.score_w = this.state.rightPlayer.score;
-      this.state.score_l = this.state.leftPlayer.score;
-    } else {
-      this.state.score_w = this.state.leftPlayer.score;
-      this.state.score_l = this.state.rightPlayer.score;
-    }
-  }
-
   async onLeave(client: Client, consented: boolean) {
     try {
       const reconnection = await this.allowReconnection(client, 10);
     } catch (e) {
+      if (client.sessionId == this.state.leftPlayer.id) {
+        this.state.score_l = this.state.leftPlayer.score;
+        this.state.score_w = this.state.rightPlayer.score;
+      } else {
+        this.state.score_l = this.state.rightPlayer.score;
+        this.state.score_w = this.state.leftPlayer.score;
+      }
       this.disconnect();
       client.send("disconnected");
     }
@@ -142,18 +150,22 @@ export class GameRoom extends Room<GameState> {
   }
 
   async onDispose() {
-    // const res = await post('http://localhost:3000/api/game/create-game', {
-    //   headers: {
-    //     token: 'bearer ' + this.state.token,
-    //   },
-    //   body: {
-    //     category: this.state.category,
-    //     user1: this.state.ids.idLeft,
-    //     user2: this.state.ids.idRight,
-    //     score_w: this.state.score_w,
-    //     score_l: this.state.score_l,
-    //   },
-    // });
+    try {
+      const res = await post("http://localhost:3000/api/game/create-game", {
+        headers: {
+          token: "bearer " + this.state.token,
+        },
+        body: {
+          category: this.state.category,
+          user1: this.state.ids.idLeft,
+          user2: this.state.ids.idRight,
+          score_w: this.state.score_w,
+          score_l: this.state.score_l,
+        },
+      });
+    } catch (e) {
+      console.log(e);
+    }
     console.log("room", this.roomId, "disposing...");
   }
 }
