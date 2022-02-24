@@ -13,8 +13,6 @@ import {
   playerBot,
   playerRight,
   playerLeft,
-  debugPlayer,
-  debugBall,
 } from "./utils";
 
 export class GameRoom extends Room<GameState> {
@@ -22,7 +20,16 @@ export class GameRoom extends Room<GameState> {
   private rightReady: boolean = false;
   private position: boolean = false;
 
-  private simulate() {
+  private cleanup(): void {
+    this.broadcast("gameend", {});
+    this.disconnect().then((foo) => {
+      console.log("all clients have been disconnected");
+    });
+  }
+
+  /* Simulate a Pong loop cycle, return either true or false
+  if simulation needs to stop or continue */
+  private simulate(): void {
     const Lplayer: Player = this.state.leftPlayer;
     const Rplayer: Player = this.state.rightPlayer;
     const ball: Ball = this.state.ball;
@@ -37,10 +44,12 @@ export class GameRoom extends Room<GameState> {
       ball.velocity.y *= -1;
     } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
       Lplayer.score += 1;
+      if (Lplayer.score === 3) this.cleanup();
       ballReset(ball);
     } else if (ballLeft(ball) <= 0) {
       /* right player scored a point */
       Rplayer.score += 1;
+      if (Rplayer.score === 3) this.cleanup();
       ballReset(ball);
     } else if (
       playerTop(Lplayer) < ballBot(ball) &&
