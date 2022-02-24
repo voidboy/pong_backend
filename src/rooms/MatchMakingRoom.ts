@@ -2,7 +2,8 @@ import { Room, Client, Delayed, matchMaker } from "colyseus";
 
 interface MatchGroup {
   joinedClients: ClientInfo[];
-  ready?: boolean;
+  ready: boolean;
+  averageRank: number;
 }
 
 interface ClientInfo {
@@ -27,25 +28,15 @@ export class MatchMakingRoom extends Room {
   }
 
   onCreate() {
-    // this.onMessage("confirm", (client: Client, message: any) => {
-    //   const foundClient = this.AllClients.find(
-    //     (AllClient) => AllClient.client === client
-    //   );
-    //   if (foundClient && foundClient.group) {
-    //     foundClient.confirmed = true;
-    //     foundClient.client.leave();
-    //   }
-    // });
-
-    // NOT USED CARE ===>
     this.onMessage("id", (client, message) => {
       const foundClient = this.AllClients.find(
         (AllClient) => AllClient.client === client
       );
-      console.log("On message id -> ", message);
       foundClient.data = message;
+      foundClient.rank = message.ladder?.points;
+      foundClient.rankRange = 100;
     });
-    // <===
+
     this.setSimulationInterval(() => this.makeGroups(), 2000);
   }
 
@@ -59,7 +50,7 @@ export class MatchMakingRoom extends Room {
   }
 
   createGroup() {
-    let group: MatchGroup = { joinedClients: [], ready: false };
+    let group: MatchGroup = { joinedClients: [], ready: false, averageRank: 0 };
     this.groups.push(group);
     return group;
   }
@@ -71,6 +62,7 @@ export class MatchMakingRoom extends Room {
     this.groups = [];
 
     let currentGroup: MatchGroup = this.createGroup();
+    let totalRank = 0;
     /* === Check for every client => matchable with rank and waitingTime === */
     for (let i = 0; i < this.AllClients.length; i++) {
       const client = this.AllClients[i];
@@ -86,9 +78,16 @@ export class MatchMakingRoom extends Room {
       if (client.waitingTime > 30000)
         console.log("client[", i, "].waitingTime > 30sec");
 
+      // Handle Rank in groups
+      if (currentGroup.averageRank > 0) {
+      }
+
       // Add client to group and add group to client
       client.group = currentGroup;
       currentGroup.joinedClients.push(client);
+
+      totalRank += client.rank;
+      currentGroup.averageRank = totalRank / currentGroup.joinedClients.length;
 
       // We want to match 2 clients so length must be 2
       if (currentGroup.joinedClients.length === 2) {
@@ -96,6 +95,7 @@ export class MatchMakingRoom extends Room {
         // and we reset currentGroup to continue our ForLoop
         currentGroup.ready = true;
         currentGroup = this.createGroup();
+        totalRank = 0;
       }
     }
     /*
