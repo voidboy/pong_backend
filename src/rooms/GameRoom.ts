@@ -13,8 +13,6 @@ import {
   playerBot,
   playerRight,
   playerLeft,
-  debugPlayer,
-  debugBall,
 } from "./utils";
 
 export class GameRoom extends Room<GameState> {
@@ -22,7 +20,17 @@ export class GameRoom extends Room<GameState> {
   private rightReady: boolean = false;
   private position: boolean = false;
 
-  private simulate() {
+  private cleanup(): void {
+    console.log("HERE");
+    this.broadcast("gameend", {});
+    this.disconnect().then((foo) => {
+      console.log("all clients have been disconnected");
+    });
+  }
+
+  /* Simulate a Pong loop cycle, return either true or false
+  if simulation needs to stop or continue */
+  private simulate(): void {
     const Lplayer: Player = this.state.leftPlayer;
     const Rplayer: Player = this.state.rightPlayer;
     const ball: Ball = this.state.ball;
@@ -37,10 +45,12 @@ export class GameRoom extends Room<GameState> {
       ball.velocity.y *= -1;
     } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
       Lplayer.score += 1;
+      if (Lplayer.score === 3) this.cleanup();
       ballReset(ball);
     } else if (ballLeft(ball) <= 0) {
       /* right player scored a point */
       Rplayer.score += 1;
+      if (Rplayer.score === 3) this.cleanup();
       ballReset(ball);
     } else if (
       playerTop(Lplayer) < ballBot(ball) &&
@@ -93,16 +103,15 @@ export class GameRoom extends Room<GameState> {
     this.onMessage("ready", (client, message) => {
       if (message === "left") this.leftReady = true;
       if (message === "right") this.rightReady = true;
-      if (this.rightReady && this.leftReady) {
+      if (this.rightReady === true && this.leftReady === true) {
+        this.broadcast("start", {});
         this.setSimulationInterval((deltatime) => {
           this.simulate();
         });
       }
     });
     this.onMessage("id", (client, message) => {
-      console.log("ID -> ", this.state.ids);
-      console.log("ID -> ", this.position);
-
+      console.log(message);
       this.position
         ? (this.state.ids.idLeft = message)
         : (this.state.ids.idRight = message);
