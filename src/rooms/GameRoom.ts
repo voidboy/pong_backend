@@ -78,6 +78,11 @@ export class GameRoom extends Room<GameState> {
     /* increase patchrate to reach 60 FPS */
     this.setPatchRate(16);
 
+    this.clock.setTimeout(() => {
+      if (!this.leftReady || !this.rightReady) {
+        this.disconnect();
+      }
+    }, 3000);
     this.onMessage("position", (client, message) => {
       client.send("position", this.position ? "right" : "left");
       this.position = !this.position;
@@ -106,10 +111,12 @@ export class GameRoom extends Room<GameState> {
         this.state.dataLeft.id = message.id;
         this.state.dataLeft.avatar = message.avatar;
         this.state.dataLeft.nickname = message.nickname;
+        this.state.dataLeft.points = message.ladder?.points;
       } else {
         this.state.dataRight.id = message.id;
         this.state.dataRight.avatar = message.avatar;
         this.state.dataRight.nickname = message.nickname;
+        this.state.dataRight.points = message.ladder?.points;
       }
     });
     this.onMessage("cancelgame", (client, message) => {

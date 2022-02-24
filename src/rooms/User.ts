@@ -24,6 +24,8 @@ export class User extends Schema {
   nickname: string;
   @type("string")
   avatar: string;
+  @type("number")
+  points: number;
 
   constructor(id = 0, nickname = "", avatar = "") {
     super();
