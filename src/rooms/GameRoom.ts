@@ -212,6 +212,5 @@ export class GameRoom extends Room<GameState> {
       console.log(e);
     }
     console.log("room", this.roomId, "disposing...");
-    console.log(this.roomId, " - GameRoom - join!");
   }
 }
