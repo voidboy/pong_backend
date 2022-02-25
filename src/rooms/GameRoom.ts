@@ -16,6 +16,7 @@ import {
   debugPlayer,
   debugBall,
 } from "./utils";
+import * as jwt from 'jsonwebtoken';
 import { post } from "httpie";
 
 export class GameRoom extends Room<GameState> {
@@ -150,10 +151,11 @@ export class GameRoom extends Room<GameState> {
   }
 
   async onDispose() {
+    const token = jwt.sign({}, 'tr_secret_key_game');
     try {
       const res = await post("http://localhost:3000/api/game/create-game", {
         headers: {
-          token: "bearer " + this.state.token,
+          token: "bearer " + token,
         },
         body: {
           category: this.state.category,
