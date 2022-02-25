@@ -17,6 +17,7 @@ import {
   debugBall,
 } from "./utils";
 import { post } from "httpie";
+import { json } from "express";
 
 export class GameRoom extends Room<GameState> {
   private leftReady: boolean = false;
@@ -197,7 +198,7 @@ export class GameRoom extends Room<GameState> {
     try {
       const res = await post("http://localhost:3000/api/game/create-game", {
         headers: {
-          token: "bearer " + this.state.token,
+          authorization: "bearer " + json,
         },
         body: {
           category: this.state.category,
