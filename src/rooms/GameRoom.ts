@@ -103,7 +103,7 @@ export class GameRoom extends Room<GameState> {
       if (!this.leftReady || !this.rightReady) {
         this.disconnect();
       }
-    }, 3000);
+    }, 20000);
     this.onMessage("position", (client, message) => {
       client.send("position", this.position ? "right" : "left");
       this.position = !this.position;
@@ -127,7 +127,6 @@ export class GameRoom extends Room<GameState> {
       }
     });
     this.onMessage("id", (client, message) => {
-      console.log("ID POS -> ", this.position);
       if (this.position) {
         this.state.dataLeft.id = message.id;
         this.state.dataLeft.avatar = message.avatar;
