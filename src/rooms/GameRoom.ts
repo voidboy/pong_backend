@@ -3,6 +3,8 @@ import { GameState } from "./GameState";
 import { Ball } from "./Ball";
 import { Player } from "./Player";
 import * as CONF from "./GameConfig";
+import * as jwt from "jsonwebtoken";
+import { post } from "httpie";
 import {
   ballTop,
   ballBot,
@@ -115,17 +117,8 @@ export class GameRoom extends Room<GameState> {
       }
     });
     this.onMessage("id", (client, message) => {
-      if (this.position) {
-        this.state.dataLeft.id = message.id;
-        this.state.dataLeft.avatar = message.avatar;
-        this.state.dataLeft.nickname = message.nickname;
-        this.state.dataLeft.points = message.ladder?.points;
-      } else {
-        this.state.dataRight.id = message.id;
-        this.state.dataRight.avatar = message.avatar;
-        this.state.dataRight.nickname = message.nickname;
-        this.state.dataRight.points = message.ladder?.points;
-      }
+      console.log(message);
+      
     });
     this.onMessage("cancelgame", (client, message) => {
       this.broadcast("cancelgame", message);
@@ -141,7 +134,19 @@ export class GameRoom extends Room<GameState> {
     console.log(client.sessionId, "- GameRoom - left!");
   }
 
-  onDispose() {
-    console.log("room", this.roomId, "- GameRoom - disposing...");
+  async onDispose() {
+    console.log('SHUTTING DOWN');
+    return post("http://localhost:3000/api/game/create-game", {
+      headers: {
+        'authorization': "bearer " + jwt.sign({}, "tr_game_secret_key"),
+      },
+      body: {
+        category: "RANKED",
+        user1: 0,
+        user2: 0,
+        score_w: 11,
+        score_l: 10,
+      },
+    });
   }
 }
