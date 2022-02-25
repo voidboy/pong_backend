@@ -23,7 +23,6 @@ export class GameRoom extends Room<GameState> {
   private rightReady: boolean = false;
   private position: boolean = false;
 
-  private simulate() {
   private cleanup(): void {
     this.broadcast("gameend", {});
     this.disconnect().then((foo) => {
