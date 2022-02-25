@@ -6,6 +6,7 @@ import * as CONF from "./GameConfig";
 import { Id } from "./Id";
 import { GameCategory } from "/Users/fgomez/Desktop/ft_transcendense/api_infinity/src/database/entities/game.entity";
 import { GameRoom } from "./GameRoom";
+import { User } from "./User";
 
 export class GameState extends Schema {
   @type(Player)
@@ -14,8 +15,6 @@ export class GameState extends Schema {
   rightPlayer: Player;
   @type(Ball)
   ball: Ball;
-  @type(Id)
-  ids: Id;
   @type("string")
   token: string;
   @type("number")
@@ -23,6 +22,10 @@ export class GameState extends Schema {
   score_l: number;
 
   category: GameCategory;
+  @type(User)
+  dataLeft: User;
+  @type(User)
+  dataRight: User;
 
   constructor(
     leftPlayer = new Player(
@@ -38,12 +41,14 @@ export class GameState extends Schema {
       new Point(CONF.GAME_WIDTH / 2, CONF.GAME_HEIGHT / 2),
       new Point(CONF.BALL_XVELOCITY, CONF.BALL_YVELOCITY)
     ),
-    ids = new Id()
+    dataLeft = new User(),
+    dataRight = new User()
   ) {
     super();
     this.leftPlayer = leftPlayer;
     this.rightPlayer = rightPlayer;
     this.ball = ball;
-    this.ids = ids;
+    this.dataLeft = dataLeft;
+    this.dataRight = dataRight;
   }
 }

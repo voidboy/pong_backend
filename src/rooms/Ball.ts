@@ -12,4 +12,8 @@ export class Ball extends Schema {
     this.pos = pos;
     this.velocity = velocity;
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> feature/matchmaking
