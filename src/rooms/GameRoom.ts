@@ -18,13 +18,23 @@ import {
 } from "./utils";
 import * as jwt from 'jsonwebtoken';
 import { post } from "httpie";
+import { json } from "express";
 
 export class GameRoom extends Room<GameState> {
   private leftReady: boolean = false;
   private rightReady: boolean = false;
   private position: boolean = false;
 
-  private simulate() {
+  private cleanup(): void {
+    this.broadcast("gameend", {});
+    this.disconnect().then((foo) => {
+      console.log("all clients have been disconnected");
+    });
+  }
+
+  /* Simulate a Pong loop cycle, return either true or false
+  if simulation needs to stop or continue */
+  private simulate(): void {
     const Lplayer: Player = this.state.leftPlayer;
     const Rplayer: Player = this.state.rightPlayer;
     const ball: Ball = this.state.ball;
@@ -39,10 +49,12 @@ export class GameRoom extends Room<GameState> {
       ball.velocity.y *= -1;
     } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
       Lplayer.score += 1;
+      if (Lplayer.score === 3) this.cleanup();
       ballReset(ball);
     } else if (ballLeft(ball) <= 0) {
       /* right player scored a point */
       Rplayer.score += 1;
+      if (Rplayer.score === 3) this.cleanup();
       ballReset(ball);
     } else if (
       playerTop(Lplayer) < ballBot(ball) &&
@@ -89,6 +101,11 @@ export class GameRoom extends Room<GameState> {
     /* increase patchrate to reach 60 FPS */
     this.setPatchRate(16);
 
+    this.clock.setTimeout(() => {
+      if (!this.leftReady || !this.rightReady) {
+        this.disconnect();
+      }
+    }, 20000);
     this.onMessage("position", (client, message) => {
       client.send("position", this.position ? "right" : "left");
       this.position = !this.position;
@@ -96,35 +113,63 @@ export class GameRoom extends Room<GameState> {
     this.onMessage("moveleft", (client, message) => {
       // console.log("left -> ", message);
       this.state.leftPlayer.pos.y = message;
-      this.state.leftPlayer.id = client.sessionId;
     });
     this.onMessage("moveright", (client, message) => {
       // console.log("right -> ", message);
       this.state.rightPlayer.pos.y = message;
-      this.state.rightPlayer.id = client.sessionId;
     });
     this.onMessage("ready", (client, message) => {
       if (message === "left") this.leftReady = true;
       if (message === "right") this.rightReady = true;
       if (this.rightReady && this.leftReady) {
+        this.broadcast("ready", {});
         this.setSimulationInterval((deltatime) => {
           this.simulate();
         });
       }
     });
     this.onMessage("id", (client, message) => {
-      console.log("ID -> ", this.state.ids);
-      console.log("ID -> ", this.position);
-
-      this.position
-        ? (this.state.ids.idLeft = message)
-        : (this.state.ids.idRight = message);
+      if (this.position) {
+        this.state.dataLeft.id = message.id;
+        this.state.dataLeft.avatar = message.avatar;
+        this.state.dataLeft.nickname = message.nickname;
+        this.state.dataLeft.points = message.ladder?.points;
+      } else {
+        this.state.dataRight.id = message.id;
+        this.state.dataRight.avatar = message.avatar;
+        this.state.dataRight.nickname = message.nickname;
+        this.state.dataRight.points = message.ladder?.points;
+      }
     });
     this.onMessage("category", (client, message) => {
       this.state.category = message;
     });
-    this.onMessage("token", (client, message) => {
-      this.state.token = message;
+    this.onMessage("ready", (client, message) => {
+      if (message === "left") this.leftReady = true;
+      if (message === "right") this.rightReady = true;
+      if (this.rightReady && this.leftReady) {
+        this.broadcast("ready", {});
+        this.setSimulationInterval((deltatime) => {
+          this.simulate();
+        });
+      }
+    });
+    this.onMessage("id", (client, message) => {
+      console.log("ID POS -> ", this.position);
+      if (this.position) {
+        this.state.dataLeft.id = message.id;
+        this.state.dataLeft.avatar = message.avatar;
+        this.state.dataLeft.nickname = message.nickname;
+        this.state.dataLeft.points = message.ladder?.points;
+      } else {
+        this.state.dataRight.id = message.id;
+        this.state.dataRight.avatar = message.avatar;
+        this.state.dataRight.nickname = message.nickname;
+        this.state.dataRight.points = message.ladder?.points;
+      }
+    });
+    this.onMessage("cancelgame", (client, message) => {
+      this.broadcast("cancelgame", message);
     });
     console.log("A gameRoom is created !");
   }
@@ -159,8 +204,8 @@ export class GameRoom extends Room<GameState> {
         },
         body: {
           category: this.state.category,
-          user1: this.state.ids.idLeft,
-          user2: this.state.ids.idRight,
+          user1: this.state.dataLeft.id,
+          user2: this.state.dataRight.id,
           score_w: this.state.score_w,
           score_l: this.state.score_l,
         },
