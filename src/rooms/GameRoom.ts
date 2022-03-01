@@ -26,7 +26,22 @@ export class GameRoom extends Room<GameState> {
   private position: boolean = false;
 
   private cleanup(): void {
-    this.broadcast("gameend", {});
+    this.broadcast("gameend", {
+      Winner: {
+        score:
+          this.state.leftPlayer.score === 3
+            ? this.state.leftPlayer.score
+            : this.state.rightPlayer.score,
+        side: this.state.leftPlayer.score === 3 ? "left" : "right",
+      },
+      Looser: {
+        score:
+          this.state.rightPlayer.score !== 3
+            ? this.state.rightPlayer.score
+            : this.state.leftPlayer.score,
+        side: this.state.leftPlayer.score === 3 ? "right" : "left",
+      },
+    });
     this.disconnect().then((foo) => {
       console.log("all clients have been disconnected");
     });
