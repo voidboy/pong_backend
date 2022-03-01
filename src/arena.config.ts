@@ -1,12 +1,14 @@
 import Arena from "@colyseus/arena";
 import { monitor } from "@colyseus/monitor";
-import { LobbyRoom } from "colyseus";
+import { Client, LobbyRoom } from "colyseus";
 
 /**
  * Import your Room files
  */
 import { GameRoom } from "./rooms/GameRoom";
 import { MatchMakingRoom } from "./rooms/MatchMakingRoom";
+
+const players = new Map<string, Client>();
 
 export default Arena({
   getId: () => "Your Colyseus App",
@@ -16,21 +18,23 @@ export default Arena({
      * Define your room handlers:
      */
     gameServer.define("lobby", LobbyRoom);
-    gameServer.define("gameRoom", GameRoom).enableRealtimeListing();
     gameServer
-      .define("MatchMakingRoom", MatchMakingRoom)
+      .define("gameRoom", GameRoom, { players: players })
+      .enableRealtimeListing();
+    gameServer
+      .define("MatchMakingRoom", MatchMakingRoom, { players: players })
       .enableRealtimeListing();
   },
 
   /*
-    initializeExpress: (app) => {
-        app.get("/", (req, res) => {
-            res.send("It's time to kick ass and chew bubblegum!");
-        });
+  initializeExpress: (app) => {
+    app.get("/", (req, res) => {
+      res.send("It's time to kick ass and chew bubblegum!");
+    });
 
-        app.use("/colyseus", monitor());
-    },
-   */
+    app.use("/colyseus", monitor());
+  },
+  */
 
   beforeListen: () => {
     /**

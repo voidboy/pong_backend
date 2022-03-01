@@ -1,4 +1,4 @@
-import { Room, Client } from "colyseus";
+import { Room, Client, ServerError } from "colyseus";
 import { GameState } from "./GameState";
 import { Ball } from "./Ball";
 import { Player } from "./Player";
@@ -16,6 +16,8 @@ import {
   playerRight,
   playerLeft,
 } from "./utils";
+
+let players: undefined | Map<string, Client> = undefined;
 
 export class GameRoom extends Room<GameState> {
   private leftReady: boolean = false;
@@ -64,7 +66,6 @@ export class GameRoom extends Room<GameState> {
         to his deplacement computation (time * velocity), to prevent that
         we must put back the ball in front of the paddle */
       const bounce: number = ball.pos.y - Lplayer.pos.y;
-      //ball.pos.x = playerRight(Lplayer) + CONF.BALL_WIDTH / 2 + 1;
       /* add %5 to ball's speed each time it hits a player */
       ball.velocity.x *= -1.05;
       ball.velocity.y =
@@ -77,7 +78,6 @@ export class GameRoom extends Room<GameState> {
       if (playerLeft(Rplayer) <= ballRight(ball))
         ball.pos.x = playerLeft(Rplayer) - CONF.BALL_WIDTH / 2;
       const bounce: number = ball.pos.y - Rplayer.pos.y;
-      //ball.pos.x = playerLeft(Rplayer) - CONF.BALL_WIDTH / 2 - 2;
       ball.velocity.x *= -1.05;
       ball.velocity.y =
         CONF.BALL_YVELOCITY * (bounce / (CONF.PADDLE_HEIGHT / 2));
@@ -85,6 +85,7 @@ export class GameRoom extends Room<GameState> {
   }
 
   onCreate(options: any) {
+    players = options.players;
     this.setState(new GameState());
     /* increase patchrate to reach 60 FPS */
     this.setPatchRate(16);
@@ -127,18 +128,22 @@ export class GameRoom extends Room<GameState> {
   }
 
   onJoin(client: Client, options: any) {
+    players.set(client.sessionId, client);
+    console.log('onJoin GameRoom : ', players.size);
     console.log(this.roomId, " - GameRoom - join!");
   }
 
   onLeave(client: Client, consented: boolean) {
+    players.delete(client.sessionId);
+    console.log('onLeave GameRoom : ', players.size);
     console.log(client.sessionId, "- GameRoom - left!");
   }
 
   async onDispose() {
-    console.log('SHUTTING DOWN');
+    console.log('GameRoom disposed !');
     return post("http://localhost:3000/api/game/create-game", {
       headers: {
-        'authorization': "bearer " + jwt.sign({}, "tr_game_secret_key"),
+        'authorization': "bearer " + jwt.sign({}, "tr_secret_key"),
       },
       body: {
         category: "RANKED",

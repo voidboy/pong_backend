@@ -1,4 +1,5 @@
-import { Room, Client, Delayed, matchMaker } from "colyseus";
+import { Room, Client, matchMaker, ServerError } from "colyseus";
+import * as jwt from "jsonwebtoken";
 
 interface MatchGroup {
   joinedClients: ClientInfo[];
@@ -16,6 +17,8 @@ interface ClientInfo {
   data?: any;
 }
 
+let players: undefined | Map<string, Client> = undefined;
+
 export class MatchMakingRoom extends Room {
   // List of clients in the 'queue' MatchMaking
   AllClients: ClientInfo[] = [];
@@ -27,7 +30,18 @@ export class MatchMakingRoom extends Room {
     super();
   }
 
-  onCreate() {
+  onAuth(client, options, request): boolean {
+    try {
+      const token: string = options.authorization.split(" ")[1];
+      jwt.verify(token, "tr_secret_key");
+      return true; // .verify will throw an Error if it fails
+    } catch (e) {
+      throw new ServerError(400, "bad access token");
+    }
+  }
+
+  onCreate(options: any) {
+    players = options.players;
     this.onMessage("id", (client, message) => {
       const foundClient = this.AllClients.find(
         (AllClient) => AllClient.client === client
@@ -42,6 +56,9 @@ export class MatchMakingRoom extends Room {
 
   onJoin(client: Client, options: any) {
     console.log("New Client Joined MatchMakingRoom !");
+    players.set(client.sessionId, client);
+    console.log('onJoin MatchRoom :', players.size);
+    console.log(players);
     this.AllClients.push({
       client: client,
       waitingTime: 0,
@@ -128,6 +145,8 @@ export class MatchMakingRoom extends Room {
   }
 
   onLeave(client: Client, consented: boolean) {
+    players.delete(client.sessionId);
+    console.log('onLeave MatchRoom :', players.size)
     const index = this.AllClients.findIndex((cli) => cli.client === client);
     this.AllClients.splice(index, 1);
     console.log("MatchMakingRoom -> Client left");
