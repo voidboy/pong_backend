@@ -48,7 +48,6 @@ export class MatchMakingRoom extends Room {
       );
       foundClient.data = message;
       foundClient.rank = message.ladder?.points;
-      foundClient.rankRange = 100;
     });
 
     this.setSimulationInterval(() => this.makeGroups(), 2000);
@@ -63,6 +62,7 @@ export class MatchMakingRoom extends Room {
       client: client,
       waitingTime: 0,
       confirmed: false,
+      rankRange: 0,
     });
   }
 
@@ -79,7 +79,6 @@ export class MatchMakingRoom extends Room {
     this.groups = [];
 
     let currentGroup: MatchGroup = this.createGroup();
-    let totalRank = 0;
     /* === Check for every client => matchable with rank and waitingTime === */
     for (let i = 0; i < this.AllClients.length; i++) {
       const client = this.AllClients[i];
@@ -90,10 +89,12 @@ export class MatchMakingRoom extends Room {
       // Skip clients that are already in a ready group (full group)
       if (client.group && client.group.ready === true) continue;
 
-      // Maybe implement a MaxWaitingTime and force the
-      // client to join a group with high diff rank
-      if (client.waitingTime > 30000)
-        console.log("client[", i, "].waitingTime > 30sec");
+      // Everytime a client has waited more than 5 seconds,
+      // we increment rankRange to find match eventually
+      if (client.waitingTime > 5000) {
+        client.rankRange += 50;
+        client.waitingTime = 0;
+      }
 
       // Handle Rank in groups
       if (currentGroup.averageRank > 0) {
@@ -103,16 +104,21 @@ export class MatchMakingRoom extends Room {
       client.group = currentGroup;
       currentGroup.joinedClients.push(client);
 
-      totalRank += client.rank;
-      currentGroup.averageRank = totalRank / currentGroup.joinedClients.length;
-
       // We want to match 2 clients so length must be 2
       if (currentGroup.joinedClients.length === 2) {
-        // In that case we set ready statement to true
-        // and we reset currentGroup to continue our ForLoop
-        currentGroup.ready = true;
-        currentGroup = this.createGroup();
-        totalRank = 0;
+        let rank1 = currentGroup.joinedClients[0].rank;
+        let rank2 = currentGroup.joinedClients[1].rank;
+        const GroupRankDiff = rank1 > rank2 ? rank1 - rank2 : rank2 - rank1;
+        console.log(
+          "GroupRankRange -> ",
+          GroupRankDiff,
+          "User rankRange = ",
+          client.rankRange
+        );
+        if (client.rankRange > GroupRankDiff) {
+          currentGroup.ready = true;
+          currentGroup = this.createGroup();
+        }
       }
     }
     /*
