@@ -16,7 +16,7 @@ import {
   debugPlayer,
   debugBall,
 } from "./utils";
-import * as jwt from 'jsonwebtoken';
+import * as jwt from "jsonwebtoken";
 import { post } from "httpie";
 import { json } from "express";
 
@@ -156,9 +156,6 @@ export class GameRoom extends Room<GameState> {
         this.state.dataRight.points = message.ladder?.points;
       }
     });
-    this.onMessage("category", (client, message) => {
-      this.state.category = message;
-    });
     this.onMessage("ready", (client, message) => {
       if (message === "left") this.leftReady = true;
       if (message === "right") this.rightReady = true;
@@ -211,18 +208,24 @@ export class GameRoom extends Room<GameState> {
   }
 
   async onDispose() {
-    const token = jwt.sign({}, 'tr_secret_key_game');
+    const token = jwt.sign({}, "tr_secret_key");
     try {
       const res = await post("http://localhost:3000/api/game/create-game", {
         headers: {
-          token: "bearer " + token,
+          authorization: "bearer " + token,
         },
         body: {
-          category: this.state.category,
+          category: "RANKED",
           user1: this.state.dataLeft.id,
           user2: this.state.dataRight.id,
-          score_w: this.state.score_w,
-          score_l: this.state.score_l,
+          score_w:
+            this.state.leftPlayer.score === 3
+              ? this.state.leftPlayer.score
+              : this.state.rightPlayer.score,
+          score_l:
+            this.state.rightPlayer.score !== 3
+              ? this.state.rightPlayer.score
+              : this.state.leftPlayer.score,
         },
       });
     } catch (e) {

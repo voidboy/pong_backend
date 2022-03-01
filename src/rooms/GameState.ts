@@ -4,7 +4,6 @@ import { Ball } from "./Ball";
 import { Point } from "./Point";
 import * as CONF from "./GameConfig";
 import { Id } from "./Id";
-import { GameCategory } from "/Users/fgomez/Desktop/ft_transcendense/api_infinity/src/database/entities/game.entity";
 import { GameRoom } from "./GameRoom";
 import { User } from "./User";
 
@@ -21,7 +20,6 @@ export class GameState extends Schema {
   score_w: number;
   score_l: number;
 
-  category: GameCategory;
   @type(User)
   dataLeft: User;
   @type(User)
