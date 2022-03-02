@@ -23,8 +23,22 @@ export class GameRoom extends Room<GameState> {
   private position: boolean = false;
 
   private cleanup(): void {
-    /* SEND ALL GAME INFORMATION HERE */
-    this.broadcast("gameend", {});
+    this.broadcast("gameend", {
+      Winner: {
+        score:
+          this.state.leftPlayer.score === 3
+            ? this.state.leftPlayer.score
+            : this.state.rightPlayer.score,
+        side: this.state.leftPlayer.score === 3 ? "left" : "right",
+      },
+      Looser: {
+        score:
+          this.state.rightPlayer.score !== 3
+            ? this.state.rightPlayer.score
+            : this.state.leftPlayer.score,
+        side: this.state.leftPlayer.score === 3 ? "right" : "left",
+      },
+    });
     this.disconnect().then((foo) => {
       console.log("all clients have been disconnected");
     });
@@ -107,9 +121,7 @@ export class GameRoom extends Room<GameState> {
       // console.log("right -> ", message);
       this.state.rightPlayer.pos.y = message;
     });
-    this.onMessage("category", (client, message) => {
-      this.state.category = message;
-    });
+  
     this.onMessage("ready", (client, message) => {
       if (message === "left") this.leftReady = true;
       if (message === "right") this.rightReady = true;
@@ -162,18 +174,24 @@ export class GameRoom extends Room<GameState> {
   }
 
   async onDispose() {
-    const token = jwt.sign({}, "tr_secret_key_game");
+    const token = jwt.sign({}, "tr_secret_key");
     try {
       const res = await post("http://localhost:3000/api/game/create-game", {
         headers: {
-          token: "bearer " + token,
+          authorization: "bearer " + token,
         },
         body: {
-          category: this.state.category,
+          category: "RANKED",
           user1: this.state.dataLeft.id,
           user2: this.state.dataRight.id,
-          score_w: this.state.score_w,
-          score_l: this.state.score_l,
+          score_w:
+            this.state.leftPlayer.score === 3
+              ? this.state.leftPlayer.score
+              : this.state.rightPlayer.score,
+          score_l:
+            this.state.rightPlayer.score !== 3
+              ? this.state.rightPlayer.score
+              : this.state.leftPlayer.score,
         },
       });
     } catch (e) {
