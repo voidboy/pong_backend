@@ -6,3 +6,4 @@ export const BALL_WIDTH: number = 15;
 export const BALL_HEIGHT: number = 15;
 export const BALL_XVELOCITY: number = -250;
 export const BALL_YVELOCITY: number = 250;
+export const WIN_SCORE: number = 3;

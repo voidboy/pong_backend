@@ -27,17 +27,17 @@ export class GameRoom extends Room<GameState> {
     this.broadcast("gameend", {
       Winner: {
         score:
-          this.state.leftPlayer.score === 3
+          this.state.leftPlayer.score === CONF.WIN_SCORE
             ? this.state.leftPlayer.score
             : this.state.rightPlayer.score,
-        side: this.state.leftPlayer.score === 3 ? "left" : "right",
+        side: this.state.leftPlayer.score === CONF.WIN_SCORE ? "left" : "right",
       },
       Looser: {
         score:
-          this.state.rightPlayer.score !== 3
+          this.state.rightPlayer.score !== CONF.WIN_SCORE
             ? this.state.rightPlayer.score
             : this.state.leftPlayer.score,
-        side: this.state.leftPlayer.score === 3 ? "right" : "left",
+        side: this.state.leftPlayer.score === CONF.WIN_SCORE ? "right" : "left",
       },
     });
     this.disconnect().then((foo) => {
@@ -62,12 +62,12 @@ export class GameRoom extends Room<GameState> {
       ball.velocity.y *= -1;
     } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
       Lplayer.score += 1;
-      if (Lplayer.score === 3) this.cleanup();
+      if (Lplayer.score === CONF.WIN_SCORE) this.cleanup();
       ballReset(ball);
     } else if (ballLeft(ball) <= 0) {
       /* right player scored a point */
       Rplayer.score += 1;
-      if (Rplayer.score === 3) this.cleanup();
+      if (Rplayer.score === CONF.WIN_SCORE) this.cleanup();
       ballReset(ball);
     } else if (
       playerTop(Lplayer) < ballBot(ball) &&
@@ -154,16 +154,24 @@ export class GameRoom extends Room<GameState> {
 
   async onDispose() {
     console.log("GameRoom disposed !");
-    return post("http://localhost:3000/api/game/create-game", {
+    const winner =
+      this.inf.LeftPlayer.score > this.inf.RightPlayer.score
+        ? this.inf.LeftPlayer
+        : this.inf.RightPlayer;
+    const looser =
+      this.inf.LeftPlayer.score < this.inf.RightPlayer.score
+        ? this.inf.LeftPlayer
+        : this.inf.RightPlayer;
+    return post("http://localhost:CONF.WIN_SCORE000/api/game/create-game", {
       headers: {
         authorization: "bearer " + jwt.sign({}, "tr_secret_key"),
       },
       body: {
         category: "RANKED",
-        winner: this.inf.LeftPlayer.id,
-        loser: this.inf.RightPlayer.id,
-        score_loser: 0,
-        score_winner: 11,
+        winner: winner.id,
+        loser: looser.id,
+        score_loser: winner.score,
+        score_winner: looser.score,
       },
     });
   }
