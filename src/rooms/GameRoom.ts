@@ -13,12 +13,9 @@ import {
   playerBot,
   playerRight,
   playerLeft,
-  debugPlayer,
-  debugBall,
 } from "./utils";
-import * as jwt from 'jsonwebtoken';
+import * as jwt from "jsonwebtoken";
 import { post } from "httpie";
-import { json } from "express";
 
 export class GameRoom extends Room<GameState> {
   private leftReady: boolean = false;
@@ -26,6 +23,7 @@ export class GameRoom extends Room<GameState> {
   private position: boolean = false;
 
   private cleanup(): void {
+    /* SEND ALL GAME INFORMATION HERE */
     this.broadcast("gameend", {});
     this.disconnect().then((foo) => {
       console.log("all clients have been disconnected");
@@ -49,12 +47,12 @@ export class GameRoom extends Room<GameState> {
       ball.velocity.y *= -1;
     } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
       Lplayer.score += 1;
-      if (Lplayer.score === 3) this.cleanup();
+      if (Lplayer.score === CONF.WIN_SCORE) this.cleanup();
       ballReset(ball);
     } else if (ballLeft(ball) <= 0) {
       /* right player scored a point */
       Rplayer.score += 1;
-      if (Rplayer.score === 3) this.cleanup();
+      if (Rplayer.score === CONF.WIN_SCORE) this.cleanup();
       ballReset(ball);
     } else if (
       playerTop(Lplayer) < ballBot(ball) &&
@@ -85,15 +83,6 @@ export class GameRoom extends Room<GameState> {
       ball.velocity.y =
         CONF.BALL_YVELOCITY * (bounce / (CONF.PADDLE_HEIGHT / 2));
     }
-    if (Lplayer.score == 11) {
-      this.state.score_w = Lplayer.score;
-      this.state.score_l = Rplayer.score;
-      this.disconnect();
-    } else if (Rplayer.score == 11) {
-      this.state.score_w = Rplayer.score;
-      this.state.score_l = Lplayer.score;
-      this.disconnect();
-    }
   }
 
   onCreate(options: any) {
@@ -117,29 +106,6 @@ export class GameRoom extends Room<GameState> {
     this.onMessage("moveright", (client, message) => {
       // console.log("right -> ", message);
       this.state.rightPlayer.pos.y = message;
-    });
-    this.onMessage("ready", (client, message) => {
-      if (message === "left") this.leftReady = true;
-      if (message === "right") this.rightReady = true;
-      if (this.rightReady && this.leftReady) {
-        this.broadcast("ready", {});
-        this.setSimulationInterval((deltatime) => {
-          this.simulate();
-        });
-      }
-    });
-    this.onMessage("id", (client, message) => {
-      if (this.position) {
-        this.state.dataLeft.id = message.id;
-        this.state.dataLeft.avatar = message.avatar;
-        this.state.dataLeft.nickname = message.nickname;
-        this.state.dataLeft.points = message.ladder?.points;
-      } else {
-        this.state.dataRight.id = message.id;
-        this.state.dataRight.avatar = message.avatar;
-        this.state.dataRight.nickname = message.nickname;
-        this.state.dataRight.points = message.ladder?.points;
-      }
     });
     this.onMessage("category", (client, message) => {
       this.state.category = message;
@@ -180,7 +146,7 @@ export class GameRoom extends Room<GameState> {
 
   async onLeave(client: Client, consented: boolean) {
     try {
-      const reconnection = await this.allowReconnection(client, 10);
+      const reconnection = await this.allowReconnection(client, 20);
     } catch (e) {
       if (client.sessionId == this.state.leftPlayer.id) {
         this.state.score_l = this.state.leftPlayer.score;
@@ -196,7 +162,7 @@ export class GameRoom extends Room<GameState> {
   }
 
   async onDispose() {
-    const token = jwt.sign({}, 'tr_secret_key_game');
+    const token = jwt.sign({}, "tr_secret_key_game");
     try {
       const res = await post("http://localhost:3000/api/game/create-game", {
         headers: {
