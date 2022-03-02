@@ -12,10 +12,6 @@ export class GameState extends Schema {
   rightPlayer: Player;
   @type(Ball)
   ball: Ball;
-  @type(User)
-  dataLeft: User;
-  @type(User)
-  dataRight: User;
 
   constructor(
     leftPlayer = new Player(
@@ -38,7 +34,5 @@ export class GameState extends Schema {
     this.leftPlayer = leftPlayer;
     this.rightPlayer = rightPlayer;
     this.ball = ball;
-    this.dataLeft = dataLeft;
-    this.dataRight = dataRight;
   }
 }

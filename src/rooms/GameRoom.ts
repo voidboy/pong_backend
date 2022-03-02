@@ -23,6 +23,7 @@ export class GameRoom extends Room<GameState> {
   private leftReady: boolean = false;
   private rightReady: boolean = false;
   private position: boolean = false;
+  private User_id: boolean;
 
   private cleanup(): void {
     this.broadcast("gameend", {
@@ -133,7 +134,7 @@ export class GameRoom extends Room<GameState> {
       }
     });
     this.onMessage("id", (client, message) => {
-      console.log(message);
+      this.User_id = message;
     });
     this.onMessage("cancelgame", (client, message) => {
       this.broadcast("cancelgame", message);
