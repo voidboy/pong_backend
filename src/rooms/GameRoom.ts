@@ -160,10 +160,10 @@ export class GameRoom extends Room<GameState> {
       },
       body: {
         category: "RANKED",
-        user1: this.inf.LeftPlayer.id,
-        user2: this.inf.RightPlayer.id,
-        score_l: this.state.rightPlayer.score,
-        score_w: this.state.leftPlayer.score,
+        winner: this.inf.LeftPlayer.id,
+        loser: this.inf.RightPlayer.id,
+        score_loser: 0,
+        score_winner: 11,
       },
     });
   }
