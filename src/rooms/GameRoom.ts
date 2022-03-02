@@ -134,7 +134,6 @@ export class GameRoom extends Room<GameState> {
     });
     this.onMessage("id", (client, message) => {
       console.log(message);
-      
     });
     this.onMessage("cancelgame", (client, message) => {
       this.broadcast("cancelgame", message);
@@ -144,21 +143,21 @@ export class GameRoom extends Room<GameState> {
 
   onJoin(client: Client, options: any) {
     players.set(client.sessionId, client);
-    console.log('onJoin GameRoom : ', players.size);
+    console.log("onJoin GameRoom : ", players.size);
     console.log(this.roomId, " - GameRoom - join!");
   }
 
   onLeave(client: Client, consented: boolean) {
     players.delete(client.sessionId);
-    console.log('onLeave GameRoom : ', players.size);
+    console.log("onLeave GameRoom : ", players.size);
     console.log(client.sessionId, "- GameRoom - left!");
   }
 
   async onDispose() {
-    console.log('GameRoom disposed !');
+    console.log("GameRoom disposed !");
     return post("http://localhost:3000/api/game/create-game", {
       headers: {
-        'authorization': "bearer " + jwt.sign({}, "tr_secret_key"),
+        authorization: "bearer " + jwt.sign({}, "tr_secret_key"),
       },
       body: {
         category: "RANKED",
