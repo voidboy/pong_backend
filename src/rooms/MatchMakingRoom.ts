@@ -56,7 +56,7 @@ export class MatchMakingRoom extends Room {
   onJoin(client: Client, options: any) {
     console.log("New Client Joined MatchMakingRoom !");
     players.set(client.sessionId, client);
-    console.log('onJoin MatchRoom :', players.size);
+    console.log("onJoin MatchRoom :", players.size);
     console.log(players);
     this.AllClients.push({
       client: client,
@@ -137,7 +137,11 @@ export class MatchMakingRoom extends Room {
     this.groups.map(async (group) => {
       if (group.ready) {
         console.log("MatchMakingRoom -> A group is ready, creating gameRooom");
-        const newRoom = await matchMaker.createRoom("gameRoom", {});
+        const newRoom = await matchMaker.createRoom("gameRoom", {
+          players: players,
+          id1: group.joinedClients[0].data,
+          id2: group.joinedClients[1].data,
+        });
         group.joinedClients.map(async (client) => {
           const reservation = await matchMaker.reserveSeatFor(newRoom, {});
           client.client.send("seat", {
@@ -152,7 +156,7 @@ export class MatchMakingRoom extends Room {
 
   onLeave(client: Client, consented: boolean) {
     players.delete(client.sessionId);
-    console.log('onLeave MatchRoom :', players.size)
+    console.log("onLeave MatchRoom :", players.size);
     const index = this.AllClients.findIndex((cli) => cli.client === client);
     this.AllClients.splice(index, 1);
     console.log("MatchMakingRoom -> Client left");

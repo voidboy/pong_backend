@@ -1,4 +1,4 @@
-import { Room, Client, ServerError } from "colyseus";
+import { Room, Client } from "colyseus";
 import { GameState } from "./GameState";
 import { Ball } from "./Ball";
 import { Player } from "./Player";
@@ -16,13 +16,12 @@ import {
   playerRight,
   playerLeft,
 } from "./utils";
+import { GameInfos, Session } from "./GameInfos";
 
-let players: undefined | Map<string, Client> = undefined;
+let players: undefined | Map<number, Session> = undefined;
 
 export class GameRoom extends Room<GameState> {
-  private leftReady: boolean = false;
-  private rightReady: boolean = false;
-  private position: boolean = false;
+  private inf: GameInfos = new GameInfos();
 
   private cleanup(): void {
     this.broadcast("gameend", {
@@ -101,39 +100,39 @@ export class GameRoom extends Room<GameState> {
 
   onCreate(options: any) {
     players = options.players;
+    this.inf.LeftPlayer = options.id1;
+    this.inf.RightPlayer = options.id2;
     this.setState(new GameState());
     /* increase patchrate to reach 60 FPS */
     this.setPatchRate(16);
 
     this.clock.setTimeout(() => {
-      if (!this.leftReady || !this.rightReady) {
+      if (!this.inf.leftReady || !this.inf.rightReady) {
         this.disconnect();
       }
     }, 20000);
+    this.onMessage("getGameInfo", (client, message) => {
+      client.send("getGameInfo", this.inf);
+    });
     this.onMessage("position", (client, message) => {
-      client.send("position", this.position ? "right" : "left");
-      this.position = !this.position;
+      client.send("position", this.inf.position ? "right" : "left");
+      this.inf.position = !this.inf.position;
     });
     this.onMessage("moveleft", (client, message) => {
-      // console.log("left -> ", message);
       this.state.leftPlayer.pos.y = message;
     });
     this.onMessage("moveright", (client, message) => {
-      // console.log("right -> ", message);
       this.state.rightPlayer.pos.y = message;
     });
     this.onMessage("ready", (client, message) => {
-      if (message === "left") this.leftReady = true;
-      if (message === "right") this.rightReady = true;
-      if (this.rightReady && this.leftReady) {
+      if (message === "left") this.inf.leftReady = true;
+      if (message === "right") this.inf.rightReady = true;
+      if (this.inf.rightReady && this.inf.leftReady) {
         this.broadcast("ready", {});
         this.setSimulationInterval((deltatime) => {
           this.simulate();
         });
       }
-    });
-    this.onMessage("id", (client, message) => {
-      console.log(message);
     });
     this.onMessage("cancelgame", (client, message) => {
       this.broadcast("cancelgame", message);
@@ -142,13 +141,13 @@ export class GameRoom extends Room<GameState> {
   }
 
   onJoin(client: Client, options: any) {
-    players.set(client.sessionId, client);
+    players.set(0, { roomId: "0", sessionId: "0" });
     console.log("onJoin GameRoom : ", players.size);
     console.log(this.roomId, " - GameRoom - join!");
   }
 
   onLeave(client: Client, consented: boolean) {
-    players.delete(client.sessionId);
+    players.delete(0);
     console.log("onLeave GameRoom : ", players.size);
     console.log(client.sessionId, "- GameRoom - left!");
   }
@@ -161,10 +160,10 @@ export class GameRoom extends Room<GameState> {
       },
       body: {
         category: "RANKED",
-        user1: 0,
-        user2: 0,
-        score_w: 11,
-        score_l: 10,
+        user1: this.inf.LeftPlayer.id,
+        user2: this.inf.RightPlayer.id,
+        score_l: this.state.rightPlayer.score,
+        score_w: this.state.leftPlayer.score,
       },
     });
   }
