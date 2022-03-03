@@ -1,4 +1,6 @@
 import { Room, Client, matchMaker, ServerError } from "colyseus";
+import { response } from "express";
+import { get } from "httpie";
 import * as jwt from "jsonwebtoken";
 
 interface MatchGroup {
@@ -30,11 +32,23 @@ export class MatchMakingRoom extends Room {
     super();
   }
 
-  onAuth(client, options, request): boolean {
+  async onAuth(client, options, request): Promise<boolean> {
     try {
       const token: string = options.authorization.split(" ")[1];
       jwt.verify(token, "tr_secret_key");
-      return true; // .verify will throw an Error if it fails
+      return get("http://localhost:3000/api/user/intra", {
+        headers: {
+          authorization: "bearer " + token,
+        },
+      }).then((rep) => {
+        try {
+          if (parseInt(rep.data) != parseInt(options.u_information.id))
+            return false;
+          else return true;
+        } catch (e) {
+          return false;
+        }
+      });
     } catch (e) {
       throw new ServerError(400, "bad access token");
     }
