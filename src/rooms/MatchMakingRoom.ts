@@ -57,7 +57,6 @@ export class MatchMakingRoom extends Room {
     console.log("New Client Joined MatchMakingRoom !");
     players.set(client.sessionId, client);
     console.log("onJoin MatchRoom :", players.size);
-    console.log(players);
     this.AllClients.push({
       client: client,
       waitingTime: 0,

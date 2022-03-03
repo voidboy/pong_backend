@@ -1,6 +1,7 @@
 import Arena from "@colyseus/arena";
 import { monitor } from "@colyseus/monitor";
 import { Client, LobbyRoom } from "colyseus";
+import { DuelRoom } from "./rooms/DuelRoom";
 
 /**
  * Import your Room files
@@ -21,9 +22,10 @@ export default Arena({
     gameServer
       .define("gameRoom", GameRoom, { players: players })
       .enableRealtimeListing();
-    gameServer
-      .define("MatchMakingRoom", MatchMakingRoom, { players: players })
-      .enableRealtimeListing();
+    // gameServer
+    //   .define("MatchMakingRoom", MatchMakingRoom, { players: players })
+    //   .enableRealtimeListing();
+    gameServer.define("DuelRoom", DuelRoom, {}).enableRealtimeListing();
   },
 
   /*
