@@ -162,7 +162,7 @@ export class GameRoom extends Room<GameState> {
       this.inf.LeftPlayer.score < this.inf.RightPlayer.score
         ? this.inf.LeftPlayer
         : this.inf.RightPlayer;
-    return post("http://localhost:CONF.WIN_SCORE000/api/game/create-game", {
+    return post("http://localhost:3000/api/game/create-game", {
       headers: {
         authorization: "bearer " + jwt.sign({}, "tr_secret_key"),
       },
