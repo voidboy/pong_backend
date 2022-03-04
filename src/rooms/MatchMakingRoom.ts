@@ -50,7 +50,7 @@ export class MatchMakingRoom extends Room {
       foundClient.rank = message.ladder?.points;
     });
 
-    this.setSimulationInterval(() => this.makeGroups(), 2000);
+    this.setSimulationInterval(() => this.makeGroups(), 500);
   }
 
   onJoin(client: Client, options: any) {
@@ -72,7 +72,7 @@ export class MatchMakingRoom extends Room {
   }
 
   makeGroups() {
-    console.log("MatchMakingRoom -> Making groups every 2 sec");
+    console.log("MatchMakingRoom -> Making groups every 0.5 sec");
 
     // Reset all groups to initialize a new pool and reset everything
     this.groups = [];

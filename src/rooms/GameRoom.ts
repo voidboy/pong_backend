@@ -106,9 +106,10 @@ export class GameRoom extends Room<GameState> {
     /* increase patchrate to reach 60 FPS */
     this.setPatchRate(16);
 
-    this.clock.setTimeout(() => {
+    let clrinter: any = this.clock.setTimeout(() => {
       if (!this.inf.leftReady || !this.inf.rightReady) {
         this.disconnect();
+        clearInterval(clrinter);
       }
     }, 20000);
     this.onMessage("getGameInfo", (client, message) => {

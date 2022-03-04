@@ -22,9 +22,9 @@ export default Arena({
     gameServer
       .define("gameRoom", GameRoom, { players: players })
       .enableRealtimeListing();
-    // gameServer
-    //   .define("MatchMakingRoom", MatchMakingRoom, { players: players })
-    //   .enableRealtimeListing();
+    gameServer
+      .define("MatchMakingRoom", MatchMakingRoom, { players: players })
+      .enableRealtimeListing();
     gameServer.define("DuelRoom", DuelRoom, {}).enableRealtimeListing();
   },
 
