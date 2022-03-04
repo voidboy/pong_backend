@@ -1,7 +1,13 @@
-import { Room, Client, matchMaker, ServerError } from "colyseus";
-import { response } from "express";
+import {
+  Room,
+  Client,
+  matchMaker,
+  ServerError,
+  RoomInternalState,
+} from "colyseus";
 import { get } from "httpie";
 import * as jwt from "jsonwebtoken";
+import { Session } from "./GameInfos";
 
 interface MatchGroup {
   joinedClients: ClientInfo[];
@@ -19,7 +25,8 @@ interface ClientInfo {
   data?: any;
 }
 
-let players: undefined | Map<string, Client> = undefined;
+let users: undefined | Map<string, Session> = undefined;
+let rooms: undefined | Map<string, Array<string>> = undefined;
 
 export class MatchMakingRoom extends Room {
   // List of clients in the 'queue' MatchMaking
@@ -55,29 +62,31 @@ export class MatchMakingRoom extends Room {
   }
 
   onCreate(options: any) {
-    players = options.players;
-    this.onMessage("id", (client, message) => {
-      const foundClient = this.AllClients.find(
-        (AllClient) => AllClient.client === client
-      );
-      foundClient.data = message;
-      foundClient.rank = message.ladder?.points;
-    });
-
+    users = options.users;
+    rooms = options.rooms;
     this.setSimulationInterval(() => this.makeGroups(), 2000);
   }
 
   onJoin(client: Client, options: any) {
-    console.log("New Client Joined MatchMakingRoom !");
-    players.set(client.sessionId, client);
-    console.log("onJoin MatchRoom :", players.size);
-    console.log(players);
-    this.AllClients.push({
-      client: client,
-      waitingTime: 0,
-      confirmed: false,
-      rankRange: 0,
-    });
+    /* here, we must check if client is not already playing a game, if so,
+    we must transfer him back his game information which will allow him to 
+    reconnect to his GameRoom and continue playing
+    */
+    const ongoing = users.get(options.u_information.id);
+    if (ongoing !== undefined) {
+      console.log("Client came back !, send reco info")
+      client.send('ongoing', ongoing);
+    } else {
+      console.log("New Client Joined MatchMakingRoom ! ", client.sessionId);
+      this.AllClients.push({
+        client: client,
+        waitingTime: 0,
+        confirmed: false,
+        rankRange: 0,
+        data: options.u_information,
+        rank: options.u_information.ladder.points,
+      });
+    }
   }
 
   createGroup() {
@@ -141,7 +150,7 @@ export class MatchMakingRoom extends Room {
      ** For our clients that we matched
      */
 
-    console.log(this.groups);
+    //console.log(this.groups);
 
     this.createRoomsForReadyGroups();
   }
@@ -150,27 +159,30 @@ export class MatchMakingRoom extends Room {
   async createRoomsForReadyGroups() {
     this.groups.map(async (group) => {
       if (group.ready) {
+        const s = new Array<string>();
         console.log("MatchMakingRoom -> A group is ready, creating gameRooom");
         const newRoom = await matchMaker.createRoom("gameRoom", {
-          players: players,
-          id1: group.joinedClients[0].data,
-          id2: group.joinedClients[1].data,
+          p1: group.joinedClients[0].data,
+          p2: group.joinedClients[1].data,
         });
         group.joinedClients.map(async (client) => {
-          const reservation = await matchMaker.reserveSeatFor(newRoom, {});
-          client.client.send("seat", {
-            reservation: reservation,
-            data: client.data,
+          const reservation = await matchMaker.reserveSeatFor(newRoom, {
+            self: client,
           });
+          client.client.send("seat", reservation);
           client.client.leave();
+          users.set(client.data.id, {
+            roomId: reservation.room.roomId,
+            sessionId: reservation.sessionId,
+          });
+          s.push(reservation.sessionId);
         });
+        rooms.set(newRoom.roomId, s);
       }
     });
   }
 
   onLeave(client: Client, consented: boolean) {
-    players.delete(client.sessionId);
-    console.log("onLeave MatchRoom :", players.size);
     const index = this.AllClients.findIndex((cli) => cli.client === client);
     this.AllClients.splice(index, 1);
     console.log("MatchMakingRoom -> Client left");

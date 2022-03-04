@@ -1,29 +1,24 @@
 import Arena from "@colyseus/arena";
-import { monitor } from "@colyseus/monitor";
 import { Client, LobbyRoom } from "colyseus";
-
-/**
- * Import your Room files
- */
+import { Session } from "./rooms/GameInfos";
 import { GameRoom } from "./rooms/GameRoom";
 import { MatchMakingRoom } from "./rooms/MatchMakingRoom";
 
-const players = new Map<string, Client>();
+const users = new Map<string, Session>();
+const rooms = new Map<string, Array<string>>();
 
 export default Arena({
-  getId: () => "Your Colyseus App",
+  getId: () => "Infinity_Pong_backend",
 
   initializeGameServer: (gameServer) => {
-    /**
-     * Define your room handlers:
-     */
     gameServer.define("lobby", LobbyRoom);
     gameServer
-      .define("gameRoom", GameRoom, { players: players })
+      .define("gameRoom", GameRoom, { users: users, rooms: rooms })
       .enableRealtimeListing();
-    gameServer
-      .define("MatchMakingRoom", MatchMakingRoom, { players: players })
-      .enableRealtimeListing();
+    gameServer.define("MatchMakingRoom", MatchMakingRoom, {
+      users: users,
+      rooms: rooms,
+    });
   },
 
   /*

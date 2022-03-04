@@ -18,7 +18,8 @@ import {
 } from "./utils";
 import { GameInfos, Session } from "./GameInfos";
 
-let players: undefined | Map<number, Session> = undefined;
+let users: undefined | Map<string, Session> = undefined;
+let rooms: undefined | Map<string, Array<string>> = undefined;
 
 export class GameRoom extends Room<GameState> {
   private inf: GameInfos = new GameInfos();
@@ -99,11 +100,13 @@ export class GameRoom extends Room<GameState> {
   }
 
   onCreate(options: any) {
-    players = options.players;
-    this.inf.LeftPlayer = options.id1;
-    this.inf.RightPlayer = options.id2;
+    const side: boolean = Math.random() > 0.5 ? true : false;
+    this.inf.LeftPlayer = side ? options.p1 : options.p2;
+    this.inf.RightPlayer = side ? options.p2 : options.p1;
+
+    users = options.users;
+    rooms = options.rooms;
     this.setState(new GameState());
-    /* increase patchrate to reach 60 FPS */
     this.setPatchRate(16);
 
     this.clock.setTimeout(() => {
@@ -114,19 +117,17 @@ export class GameRoom extends Room<GameState> {
     this.onMessage("getGameInfo", (client, message) => {
       client.send("getGameInfo", this.inf);
     });
-    this.onMessage("position", (client, message) => {
-      client.send("position", this.inf.position ? "right" : "left");
-      this.inf.position = !this.inf.position;
-    });
-    this.onMessage("moveleft", (client, message) => {
-      this.state.leftPlayer.pos.y = message;
-    });
-    this.onMessage("moveright", (client, message) => {
-      this.state.rightPlayer.pos.y = message;
+    this.onMessage("move", (client, message) => {
+      if (client.sessionId === this.inf.leftSessionId)
+        this.state.leftPlayer.pos.y = message;
+      if (client.sessionId === this.inf.rightSessionId)
+        this.state.rightPlayer.pos.y = message;
     });
     this.onMessage("ready", (client, message) => {
-      if (message === "left") this.inf.leftReady = true;
-      if (message === "right") this.inf.rightReady = true;
+      if (client.sessionId === this.inf.leftSessionId)
+        this.inf.leftReady = true;
+      if (client.sessionId === this.inf.rightSessionId)
+        this.inf.rightReady = true;
       if (this.inf.rightReady && this.inf.leftReady) {
         this.broadcast("ready", {});
         this.setSimulationInterval((deltatime) => {
@@ -141,18 +142,50 @@ export class GameRoom extends Room<GameState> {
   }
 
   onJoin(client: Client, options: any) {
-    players.set(0, { roomId: "0", sessionId: "0" });
-    console.log("onJoin GameRoom : ", players.size);
-    console.log(this.roomId, " - GameRoom - join!");
+    if (rooms.get(this.roomId).find((id) => id === client.sessionId)) {
+      const player_id = options.self.data.id;
+      if (player_id === this.inf.RightPlayer.id) {
+        client.send("position", "right");
+        this.inf.rightSessionId = client.sessionId;
+      }
+      if (player_id === this.inf.LeftPlayer.id) {
+        client.send("position", "left");
+        this.inf.leftSessionId = client.sessionId;
+      }
+      console.log(player_id, " - GameRoom - join!");
+    }
   }
 
-  onLeave(client: Client, consented: boolean) {
-    players.delete(0);
-    console.log("onLeave GameRoom : ", players.size);
+  async onLeave (client: Client, consented: boolean) {
     console.log(client.sessionId, "- GameRoom - left!");
+    // flag client as inactive for other users
+    //this.state.players.get(client.sessionId).connected = false;
+  
+    try {
+      if (consented) {
+          throw new Error("consented leave");
+      }
+      // allow disconnected client to reconnect into this room until 20 seconds
+      await this.allowReconnection(client, 20);
+  
+      // client returned! let's re-activate it.
+      //this.state.players.get(client.sessionId).connected = true;
+  
+    } catch (e) {
+  
+      // 20 seconds expired. let's remove the client.
+      //this.state.players.delete(client.sessionId);
+    }
   }
 
   async onDispose() {
+
+    /* cleanup room entry */
+    rooms.delete(this.roomId);
+    /* free users from link */
+    users.delete(this.inf.LeftPlayer.id);
+    users.delete(this.inf.RightPlayer.id);
+
     console.log("GameRoom disposed !");
     const winner =
       this.inf.LeftPlayer.score > this.inf.RightPlayer.score
