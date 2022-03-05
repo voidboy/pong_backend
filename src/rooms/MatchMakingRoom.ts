@@ -43,19 +43,7 @@ export class MatchMakingRoom extends Room {
     try {
       const token: string = options.authorization.split(" ")[1];
       jwt.verify(token, "tr_secret_key");
-      return get("http://localhost:3000/api/user/intra", {
-        headers: {
-          authorization: "bearer " + token,
-        },
-      }).then((rep) => {
-        try {
-          if (parseInt(rep.data) != parseInt(options.u_information.id))
-            return false;
-          else return true;
-        } catch (e) {
-          return false;
-        }
-      });
+      return true;
     } catch (e) {
       throw new ServerError(400, "bad access token");
     }
@@ -67,15 +55,21 @@ export class MatchMakingRoom extends Room {
     this.setSimulationInterval(() => this.makeGroups(), 2000);
   }
 
-  onJoin(client: Client, options: any) {
+  async onJoin(client: Client, options: any) {
+
+    const token: string = options.authorization.split(" ")[1];
+    const user = await get("http://localhost:3000/api/user", {
+      headers: {
+        authorization: "bearer " + token,
+      },
+    });
     /* here, we must check if client is not already playing a game, if so,
     we must transfer him back his game information which will allow him to 
     reconnect to his GameRoom and continue playing
     */
-    const ongoing = users.get(options.u_information.id);
+    const ongoing = users.get(user.data.id);
     if (ongoing !== undefined) {
-      console.log("Client came back !, send reco info")
-      client.send('ongoing', ongoing);
+      client.send("ongoing", ongoing);
     } else {
       console.log("New Client Joined MatchMakingRoom ! ", client.sessionId);
       this.AllClients.push({
@@ -83,8 +77,8 @@ export class MatchMakingRoom extends Room {
         waitingTime: 0,
         confirmed: false,
         rankRange: 0,
-        data: options.u_information,
-        rank: options.u_information.ladder.points,
+        data: user.data,
+        rank: user.data.ladder.points,
       });
     }
   }

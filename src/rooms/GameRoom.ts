@@ -114,9 +114,6 @@ export class GameRoom extends Room<GameState> {
         this.disconnect();
       }
     }, 20000);
-    this.onMessage("getGameInfo", (client, message) => {
-      client.send("getGameInfo", this.inf);
-    });
     this.onMessage("move", (client, message) => {
       if (client.sessionId === this.inf.leftSessionId)
         this.state.leftPlayer.pos.y = message;
@@ -144,14 +141,11 @@ export class GameRoom extends Room<GameState> {
   onJoin(client: Client, options: any) {
     if (rooms.get(this.roomId).find((id) => id === client.sessionId)) {
       const player_id = options.self.data.id;
-      if (player_id === this.inf.RightPlayer.id) {
-        client.send("position", "right");
+      if (player_id === this.inf.RightPlayer.id) 
         this.inf.rightSessionId = client.sessionId;
-      }
-      if (player_id === this.inf.LeftPlayer.id) {
-        client.send("position", "left");
+      if (player_id === this.inf.LeftPlayer.id) 
         this.inf.leftSessionId = client.sessionId;
-      }
+      client.send("gameInfo", this.inf);
       console.log(player_id, " - GameRoom - join!");
     }
   }
@@ -166,7 +160,8 @@ export class GameRoom extends Room<GameState> {
           throw new Error("consented leave");
       }
       // allow disconnected client to reconnect into this room until 20 seconds
-      await this.allowReconnection(client, 1000);
+      const reco_client = await this.allowReconnection(client, 1000);
+      reco_client.send("gameInfo", this.inf);
       // client returned! let's re-activate it.
       //this.state.players.get(client.sessionId).connected = true;
   
