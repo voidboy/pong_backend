@@ -22,6 +22,7 @@ export class DuelRoom extends Room {
         reservation1: reservation1,
         reservation2: reservation2,
       });
+      client.leave();
     });
   }
 
