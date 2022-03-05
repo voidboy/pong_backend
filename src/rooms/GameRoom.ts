@@ -178,13 +178,14 @@ export class GameRoom extends Room<GameState> {
 
   async onDispose() {
 
+    console.log("GameRoom disposed !");
+
     /* cleanup room entry */
     rooms.delete(this.roomId);
     /* free users from link */
     users.delete(this.inf.LeftPlayer.id);
     users.delete(this.inf.RightPlayer.id);
 
-    console.log("GameRoom disposed !");
     const winner =
       this.inf.LeftPlayer.score > this.inf.RightPlayer.score
         ? this.inf.LeftPlayer
