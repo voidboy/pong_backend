@@ -13,6 +13,8 @@ interface MatchGroup {
   joinedClients: ClientInfo[];
   ready: boolean;
   averageRank: number;
+  isGroupDuel?: boolean;
+  idForDuel?: number;
 }
 
 interface ClientInfo {
@@ -23,6 +25,8 @@ interface ClientInfo {
   rankRange?: number;
   confirmed: boolean;
   data?: any;
+  isDuel?: boolean;
+  idForDuel?: number;
 }
 
 let users: undefined | Map<string, Session> = undefined;
@@ -56,7 +60,6 @@ export class MatchMakingRoom extends Room {
   }
 
   async onJoin(client: Client, options: any) {
-
     const token: string = options.authorization.split(" ")[1];
     const user = await get("http://localhost:3000/api/user", {
       headers: {
@@ -79,6 +82,8 @@ export class MatchMakingRoom extends Room {
         rankRange: 0,
         data: user.data,
         rank: user.data.ladder.points,
+        isDuel: options.isDuel,
+        idForDuel: options.idForDuel,
       });
     }
   }

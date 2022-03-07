@@ -1,5 +1,6 @@
 import Arena from "@colyseus/arena";
 import { Client, LobbyRoom } from "colyseus";
+import { DuelRoom } from "./rooms/DuelRoom";
 import { Session } from "./rooms/GameInfos";
 import { GameRoom } from "./rooms/GameRoom";
 import { MatchMakingRoom } from "./rooms/MatchMakingRoom";
@@ -19,6 +20,7 @@ export default Arena({
       users: users,
       rooms: rooms,
     });
+    gameServer.define("DuelRoom", DuelRoom, {});
   },
 
   /*
