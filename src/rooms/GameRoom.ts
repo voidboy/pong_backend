@@ -157,20 +157,19 @@ export class GameRoom extends Room<GameState> {
     }
   }
 
-  async onLeave (client: Client, consented: boolean) {
+  async onLeave(client: Client, consented: boolean) {
     console.log(client.sessionId, "- GameRoom - left!");
     // flag client as inactive for other users
     //this.state.players.get(client.sessionId).connected = false;
-  
+
     try {
       if (consented) {
-          throw new Error("consented leave");
+        throw new Error("consented leave");
       }
       // allow disconnected client to reconnect into this room until 20 seconds
       await this.allowReconnection(client, 1000);
       // client returned! let's re-activate it.
       //this.state.players.get(client.sessionId).connected = true;
-  
     } catch (e) {
       // 20 seconds expired. let's remove the client.
       //this.state.players.delete(client.sessionId);
@@ -178,7 +177,6 @@ export class GameRoom extends Room<GameState> {
   }
 
   async onDispose() {
-
     console.log("GameRoom disposed !");
 
     /* cleanup room entry */
