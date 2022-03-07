@@ -78,7 +78,7 @@ export class MatchMakingRoom extends Room {
         confirmed: false,
         rankRange: 0,
         data: user.data,
-        rank: user.data.ladder.points,
+        rank: user.data.ladder.points
       });
     }
   }
