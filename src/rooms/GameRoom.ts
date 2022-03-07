@@ -66,13 +66,13 @@ export class GameRoom extends Room<GameState> {
       ball.velocity.y *= -1;
     } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
       Lplayer.score += 1;
-      this.setMetadata({Lscore: Lplayer.score})
+      this.setMetadata({ Lscore: Lplayer.score });
       if (Lplayer.score === CONF.WIN_SCORE) this.cleanup();
       ballReset(ball);
     } else if (ballLeft(ball) <= 0) {
       /* right player scored a point */
       Rplayer.score += 1;
-      this.setMetadata({Rscore: Rplayer.score})
+      this.setMetadata({ Rscore: Rplayer.score });
       if (Rplayer.score === CONF.WIN_SCORE) this.cleanup();
       ballReset(ball);
     } else if (
@@ -164,13 +164,18 @@ export class GameRoom extends Room<GameState> {
     try {
       if (consented) {
         throw new Error("consented leave");
+      } else {
+        // allow disconnected client to reconnect into this room until 20 seconds
+
+        const reco_client = await this.allowReconnection(client, 20);
+        console.log("CLIENT JUST RECONNECTED !");
+        reco_client.send("gameInfo", this.inf);
       }
-      // allow disconnected client to reconnect into this room until 20 seconds
-      const reco_client = await this.allowReconnection(client, 1000);
-      reco_client.send("gameInfo", this.inf);
-      // client returned! let's re-activate it.
+      // client returned! let's re-activate it.:w
       //this.state.players.get(client.sessionId).connected = true;
     } catch (e) {
+      console.log("CLIENT HAS BEEN DISCONNECTED");
+      this.disconnect();
       // 20 seconds expired. let's remove the client.
       //this.state.players.delete(client.sessionId);
     }
@@ -207,4 +212,3 @@ export class GameRoom extends Room<GameState> {
     });
   }
 }
-
