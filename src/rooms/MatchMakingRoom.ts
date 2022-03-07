@@ -52,7 +52,7 @@ export class MatchMakingRoom extends Room {
   onCreate(options: any) {
     users = options.users;
     rooms = options.rooms;
-    this.setSimulationInterval(() => this.makeGroups(), 2000);
+    this.setSimulationInterval(() => this.makeGroups(), 1000);
   }
 
   async onJoin(client: Client, options: any) {

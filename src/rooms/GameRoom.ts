@@ -23,8 +23,12 @@ let rooms: undefined | Map<string, Array<string>> = undefined;
 
 export class GameRoom extends Room<GameState> {
   private inf: GameInfos = new GameInfos();
+  private Lid: string = "";
+  private Rid: string = "";
+  private Lgo: boolean = false;
+  private Rgo: boolean = false;
 
-  private cleanup(): void {
+  private async cleanup() {
     this.broadcast("gameend", {
       Winner: {
         score:
@@ -41,9 +45,8 @@ export class GameRoom extends Room<GameState> {
         side: this.state.leftPlayer.score === CONF.WIN_SCORE ? "right" : "left",
       },
     });
-    this.disconnect().then((foo) => {
-      console.log("all clients have been disconnected");
-    });
+    await this.disconnect();
+    console.log("all clients have been disconnected");
   }
 
   /* Simulate a Pong loop cycle, return either true or false
@@ -107,25 +110,34 @@ export class GameRoom extends Room<GameState> {
     users = options.users;
     rooms = options.rooms;
     this.setState(new GameState());
+    /* setup metadata for spectator game listing */
+    this.setMetadata({
+      left: {
+        avatar: this.inf.LeftPlayer.avatar,
+        nickname : this.inf.LeftPlayer.nickname,
+        score: this.state.leftPlayer.score,
+      },
+      right: {
+        avatar: this.inf.RightPlayer.avatar,
+        nickname : this.inf.RightPlayer.nickname,
+        score: this.state.rightPlayer.score,
+      },
+    });
     this.setPatchRate(16);
 
     this.clock.setTimeout(() => {
-      if (!this.inf.leftReady || !this.inf.rightReady) {
+      if (!this.Lgo || !this.Rgo) {
         this.disconnect();
       }
     }, 20000);
     this.onMessage("move", (client, message) => {
-      if (client.sessionId === this.inf.leftSessionId)
-        this.state.leftPlayer.pos.y = message;
-      if (client.sessionId === this.inf.rightSessionId)
-        this.state.rightPlayer.pos.y = message;
+      if (client.sessionId === this.Lid) this.state.leftPlayer.pos.y = message;
+      if (client.sessionId === this.Rid) this.state.rightPlayer.pos.y = message;
     });
     this.onMessage("ready", (client, message) => {
-      if (client.sessionId === this.inf.leftSessionId)
-        this.inf.leftReady = true;
-      if (client.sessionId === this.inf.rightSessionId)
-        this.inf.rightReady = true;
-      if (this.inf.rightReady && this.inf.leftReady) {
+      if (client.sessionId === this.Lid) this.Lgo = true;
+      if (client.sessionId === this.Rid) this.Rgo = true;
+      if (this.Lgo && this.Rgo) {
         this.broadcast("ready", {});
         this.setSimulationInterval((deltatime) => {
           this.simulate();
@@ -141,30 +153,27 @@ export class GameRoom extends Room<GameState> {
   onJoin(client: Client, options: any) {
     if (rooms.get(this.roomId).find((id) => id === client.sessionId)) {
       const player_id = options.self.data.id;
-      if (player_id === this.inf.RightPlayer.id) 
-        this.inf.rightSessionId = client.sessionId;
-      if (player_id === this.inf.LeftPlayer.id) 
-        this.inf.leftSessionId = client.sessionId;
-      client.send("gameInfo", this.inf);
-      console.log(player_id, " - GameRoom - join!");
+      if (player_id === this.inf.LeftPlayer.id) this.Lid = client.sessionId;
+      if (player_id === this.inf.RightPlayer.id) this.Rid = client.sessionId;
     }
+    client.send("gameInfo", this.inf);
+    console.log(client.sessionId, " - GameRoom - join!");
   }
 
-  async onLeave (client: Client, consented: boolean) {
+  async onLeave(client: Client, consented: boolean) {
     console.log(client.sessionId, "- GameRoom - left!");
     // flag client as inactive for other users
     //this.state.players.get(client.sessionId).connected = false;
-  
+
     try {
       if (consented) {
-          throw new Error("consented leave");
+        throw new Error("consented leave");
       }
       // allow disconnected client to reconnect into this room until 20 seconds
       const reco_client = await this.allowReconnection(client, 1000);
       reco_client.send("gameInfo", this.inf);
       // client returned! let's re-activate it.
       //this.state.players.get(client.sessionId).connected = true;
-  
     } catch (e) {
       // 20 seconds expired. let's remove the client.
       //this.state.players.delete(client.sessionId);
@@ -172,7 +181,6 @@ export class GameRoom extends Room<GameState> {
   }
 
   async onDispose() {
-
     console.log("GameRoom disposed !");
 
     /* cleanup room entry */
