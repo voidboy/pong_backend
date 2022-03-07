@@ -66,11 +66,13 @@ export class GameRoom extends Room<GameState> {
       ball.velocity.y *= -1;
     } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
       Lplayer.score += 1;
+      this.setMetadata({Lscore: Lplayer.score})
       if (Lplayer.score === CONF.WIN_SCORE) this.cleanup();
       ballReset(ball);
     } else if (ballLeft(ball) <= 0) {
       /* right player scored a point */
       Rplayer.score += 1;
+      this.setMetadata({Rscore: Rplayer.score})
       if (Rplayer.score === CONF.WIN_SCORE) this.cleanup();
       ballReset(ball);
     } else if (
@@ -112,16 +114,10 @@ export class GameRoom extends Room<GameState> {
     this.setState(new GameState());
     /* setup metadata for spectator game listing */
     this.setMetadata({
-      left: {
-        avatar: this.inf.LeftPlayer.avatar,
-        nickname : this.inf.LeftPlayer.nickname,
-        score: this.state.leftPlayer.score,
-      },
-      right: {
-        avatar: this.inf.RightPlayer.avatar,
-        nickname : this.inf.RightPlayer.nickname,
-        score: this.state.rightPlayer.score,
-      },
+      left: this.inf.LeftPlayer,
+      Lscore: 0,
+      right: this.inf.RightPlayer,
+      Rscore: 0,
     });
     this.setPatchRate(16);
 
@@ -211,3 +207,4 @@ export class GameRoom extends Room<GameState> {
     });
   }
 }
+
