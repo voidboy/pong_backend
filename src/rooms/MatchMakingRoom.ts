@@ -3,7 +3,6 @@ import {
   Client,
   matchMaker,
   ServerError,
-  RoomInternalState,
 } from "colyseus";
 import { get } from "httpie";
 import * as jwt from "jsonwebtoken";

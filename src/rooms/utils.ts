@@ -18,10 +18,11 @@ export function ballRight(b: Ball): number {
   return b.pos.x + CONF.BALL_WIDTH / 2;
 }
 
-export function ballReset(b: Ball): void {
+export function ballReset(b: Ball, d: string): void {
   b.pos.x = CONF.GAME_WIDTH / 2;
   b.pos.y = CONF.GAME_HEIGHT / 2;
-  b.velocity.x = CONF.BALL_XVELOCITY;
+  if (d === "left") b.velocity.x = -CONF.BALL_XVELOCITY;
+  else if (d === "right") b.velocity.x = CONF.BALL_XVELOCITY;
   b.velocity.y = CONF.BALL_YVELOCITY;
 }
 
