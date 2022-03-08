@@ -143,6 +143,34 @@ export class GameRoom extends Room<GameState> {
     this.onMessage("cancelgame", (client, message) => {
       this.broadcast("cancelgame", message);
     });
+    this.onMessage("giveup", async (client, message) => {
+      let Winner = {};
+      let Looser = {};
+      if (client.sessionId === this.Lid) {
+        Winner = {
+          score: this.state.rightPlayer.score,
+          side: "right",
+        };
+        Looser = {
+          score: this.state.leftPlayer.score,
+          side: "left",
+        };
+      } else if (client.sessionId === this.Rid) {
+        Winner = {
+          score: this.state.leftPlayer.score,
+          side: "left",
+        };
+        Looser = {
+          score: this.state.rightPlayer.score,
+          side: "right",
+        };
+      }
+      this.broadcast("gameend", {
+        Winner: Winner,
+        Looser: Looser,
+      });
+      await this.disconnect();
+    });
     console.log("A gameRoom is created !");
   }
 
