@@ -13,6 +13,8 @@ interface MatchGroup {
   joinedClients: ClientInfo[];
   ready: boolean;
   averageRank: number;
+  isDuel?: boolean;
+  idForDuel?: number;
 }
 
 interface ClientInfo {
@@ -23,6 +25,8 @@ interface ClientInfo {
   rankRange?: number;
   confirmed: boolean;
   data?: any;
+  isDuel: boolean;
+  idForDuel: number;
 }
 
 let users: undefined | Map<string, Session> = undefined;
@@ -34,6 +38,7 @@ export class MatchMakingRoom extends Room {
 
   // Groups made by the MatchMaking algo that we want
   groups: MatchGroup[] = [];
+  duelGroups: MatchGroup[] = [];
 
   constructor() {
     super();
@@ -52,11 +57,10 @@ export class MatchMakingRoom extends Room {
   onCreate(options: any) {
     users = options.users;
     rooms = options.rooms;
-    this.setSimulationInterval(() => this.makeGroups(), 1000);
+    this.setSimulationInterval(() => this.makeGroups(), 500);
   }
 
   async onJoin(client: Client, options: any) {
-
     const token: string = options.authorization.split(" ")[1];
     const user = await get("http://localhost:3000/api/user", {
       headers: {
@@ -67,24 +71,33 @@ export class MatchMakingRoom extends Room {
     we must transfer him back his game information which will allow him to 
     reconnect to his GameRoom and continue playing
     */
+
     const ongoing = users.get(user.data.id);
     if (ongoing !== undefined) {
       client.send("ongoing", ongoing);
     } else {
       console.log("New Client Joined MatchMakingRoom ! ", client.sessionId);
-      this.AllClients.push({
+      let newClient = {
         client: client,
         waitingTime: 0,
         confirmed: false,
         rankRange: 0,
         data: user.data,
-        rank: user.data.ladder.points
-      });
+        rank: user.data.ladder.points,
+        isDuel: options.isDuel,
+        idForDuel: options.idForDuel,
+      };
+      this.AllClients.push(newClient);
     }
   }
 
   createGroup() {
-    let group: MatchGroup = { joinedClients: [], ready: false, averageRank: 0 };
+    let group: MatchGroup = {
+      joinedClients: [],
+      ready: false,
+      averageRank: 0,
+      isDuel: false,
+    };
     this.groups.push(group);
     return group;
   }
@@ -100,11 +113,33 @@ export class MatchMakingRoom extends Room {
     for (let i = 0; i < this.AllClients.length; i++) {
       const client = this.AllClients[i];
 
+      if (client.group && client.group.ready === true) continue;
+
+      if (client.isDuel) {
+        if (
+          currentGroup.isDuel === true &&
+          currentGroup.joinedClients.length === 1 &&
+          currentGroup.idForDuel === client.idForDuel
+        ) {
+          currentGroup.joinedClients.push(client);
+          client.group = currentGroup;
+          currentGroup.ready = true;
+          currentGroup = this.createGroup();
+        } else if (
+          currentGroup.isDuel === false &&
+          currentGroup.joinedClients.length === 0
+        ) {
+          currentGroup.joinedClients.push(client);
+          client.group = currentGroup;
+          currentGroup.isDuel = true;
+          currentGroup.idForDuel = client.idForDuel;
+        }
+        continue;
+      }
       // Increment waiting time
       client.waitingTime += this.clock.deltaTime;
 
       // Skip clients that are already in a ready group (full group)
-      if (client.group && client.group.ready === true) continue;
 
       // Everytime a client has waited more than 5 seconds,
       // we increment rankRange to find match eventually
@@ -122,7 +157,7 @@ export class MatchMakingRoom extends Room {
       currentGroup.joinedClients.push(client);
 
       // We want to match 2 clients so length must be 2
-      if (currentGroup.joinedClients.length === 2) {
+      if (!currentGroup.isDuel && currentGroup.joinedClients.length === 2) {
         let rank1 = currentGroup.joinedClients[0].rank;
         let rank2 = currentGroup.joinedClients[1].rank;
         const GroupRankDiff = rank1 > rank2 ? rank1 - rank2 : rank2 - rank1;
