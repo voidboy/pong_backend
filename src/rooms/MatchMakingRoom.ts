@@ -1,10 +1,4 @@
-import {
-  Room,
-  Client,
-  matchMaker,
-  ServerError,
-  RoomInternalState,
-} from "colyseus";
+import { Room, Client, matchMaker, ServerError } from "colyseus";
 import { get } from "httpie";
 import * as jwt from "jsonwebtoken";
 import { Session } from "./GameInfos";
@@ -103,8 +97,6 @@ export class MatchMakingRoom extends Room {
   }
 
   makeGroups() {
-    console.log("MatchMakingRoom -> Making groups every 0.5 sec");
-
     // Reset all groups to initialize a new pool and reset everything
     this.groups = [];
 
