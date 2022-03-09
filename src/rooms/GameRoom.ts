@@ -70,11 +70,10 @@ export class GameRoom extends Room<GameState> {
     ball.pos.x += ball.velocity.x * deltaTime;
     ball.pos.y += ball.velocity.y * deltaTime;
     if (ballTop(ball) <= 0) {
-      if (ball.pos.y < 0) ball.pos.y = CONF.BALL_HEIGHT / 2;
+      ball.pos.y = CONF.BALL_HEIGHT / 2;
       ball.velocity.y *= -1;
     } else if (ballBot(ball) >= CONF.GAME_HEIGHT) {
-      if (ball.pos.y > CONF.GAME_HEIGHT)
-        ball.pos.y = CONF.GAME_HEIGHT - CONF.BALL_HEIGHT / 2;
+      ball.pos.y = CONF.GAME_HEIGHT - CONF.BALL_HEIGHT / 2;
       ball.velocity.y *= -1;
     } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
       Lplayer.score += 1;
@@ -247,9 +246,6 @@ export class GameRoom extends Room<GameState> {
           ? this.inf.RightPlayer
           : this.inf.LeftPlayer;
     }
-    console.log("HERE3", this.gameMode);
-    console.log("HERE3] left", this.state.leftPlayer.score);
-    console.log("HERE3] right", this.state.rightPlayer.score);
     return post("http://localhost:3000/api/game/create-game", {
       headers: {
         authorization: "bearer " + jwt.sign({}, "tr_secret_key"),
