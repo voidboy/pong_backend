@@ -22,6 +22,7 @@ let users: undefined | Map<string, Session> = undefined;
 let rooms: undefined | Map<string, Array<string>> = undefined;
 
 export class GameRoom extends Room<GameState> {
+  private spc: number = 0;
   private cur: "wait" | "play" | "end" = "wait";
   private inf: GameInfos = new GameInfos();
   private Lid: string = "";
@@ -128,6 +129,7 @@ export class GameRoom extends Room<GameState> {
       Lscore: 0,
       right: this.inf.RightPlayer,
       Rscore: 0,
+      spectator: 0,
     });
     this.setPatchRate(16);
 
@@ -162,7 +164,7 @@ export class GameRoom extends Room<GameState> {
       const player_id = options.self.data.id;
       if (player_id === this.inf.LeftPlayer.id) this.Lid = client.sessionId;
       if (player_id === this.inf.RightPlayer.id) this.Rid = client.sessionId;
-    }
+    } else this.setMetadata({ spectator: ++this.spc });
     client.send("gameInfo", this.inf);
     console.log(client.sessionId, " - GameRoom - join!");
   }
@@ -171,7 +173,7 @@ export class GameRoom extends Room<GameState> {
     console.log(client.sessionId, "- GameRoom - left!");
     if (client.sessionId === this.Rid) this.Lgo = false;
     else if (client.sessionId === this.Lid) this.Rgo = false;
-    else return;
+    else return this.setMetadata({ spectator: --this.spc });
     /* do not allow reconnection when gameend */
     if (this.cur !== "play") return;
     try {
@@ -182,7 +184,6 @@ export class GameRoom extends Room<GameState> {
       reco_client.send("gameInfo", this.inf);
     } catch (e) {
       /* 20 seconds expired. finish the game */
-      console.log("Client did not reconnect to the room, ending !");
       this.cleanup();
     }
   }
@@ -199,10 +200,12 @@ export class GameRoom extends Room<GameState> {
       this.inf.LeftPlayer.score > this.inf.RightPlayer.score || !this.Rgo
         ? this.inf.LeftPlayer
         : this.inf.RightPlayer;
-    const looser =
+    const loser =
       winner === this.inf.LeftPlayer
         ? this.inf.RightPlayer
         : this.inf.LeftPlayer;
+    console.log("WINNER :", winner);
+    console.log("LOSER :", loser);
     return post("http://localhost:3000/api/game/create-game", {
       headers: {
         authorization: "bearer " + jwt.sign({}, "tr_secret_key"),
@@ -210,9 +213,15 @@ export class GameRoom extends Room<GameState> {
       body: {
         category: "RANKED",
         winner: winner.id,
-        loser: looser.id,
-        score_loser: winner.score,
-        score_winner: looser.score,
+        loser: loser.id,
+        score_winner:
+          winner === this.inf.LeftPlayer
+            ? this.state.leftPlayer.score
+            : this.state.rightPlayer.score,
+        score_lose:
+          loser === this.inf.LeftPlayer
+            ? this.state.leftPlayer.score
+            : this.state.rightPlayer.score,
       },
     });
   }
