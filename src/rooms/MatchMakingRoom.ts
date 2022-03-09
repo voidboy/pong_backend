@@ -108,7 +108,6 @@ export class MatchMakingRoom extends Room {
       if (client.group && client.group.ready === true) continue;
 
       if (client.isDuel) {
-        console.log("isDuel HERE");
         if (
           currentGroup.isDuel === true &&
           currentGroup.joinedClients.length === 1 &&
@@ -154,12 +153,6 @@ export class MatchMakingRoom extends Room {
         let rank1 = currentGroup.joinedClients[0].rank;
         let rank2 = currentGroup.joinedClients[1].rank;
         const GroupRankDiff = rank1 > rank2 ? rank1 - rank2 : rank2 - rank1;
-        console.log(
-          "GroupRankRange -> ",
-          GroupRankDiff,
-          "User rankRange = ",
-          client.rankRange
-        );
         if (client.rankRange > GroupRankDiff) {
           currentGroup.ready = true;
           currentGroup = this.createGroup();
@@ -186,7 +179,7 @@ export class MatchMakingRoom extends Room {
         const newRoom = await matchMaker.createRoom("gameRoom", {
           p1: group.joinedClients[0].data,
           p2: group.joinedClients[1].data,
-          gameMode: group.isDuel ? "DUEL" : "RANKED",
+          gameMode: group.isDuel ? "DUAL" : "RANKED",
         });
         group.joinedClients.map(async (client) => {
           const reservation = await matchMaker.reserveSeatFor(newRoom, {

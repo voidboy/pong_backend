@@ -247,9 +247,6 @@ export class GameRoom extends Room<GameState> {
           ? this.inf.RightPlayer
           : this.inf.LeftPlayer;
     }
-    console.log("HERE3", this.gameMode);
-    console.log("HERE3] left", this.state.leftPlayer.score);
-    console.log("HERE3] right", this.state.rightPlayer.score);
     return post("http://localhost:3000/api/game/create-game", {
       headers: {
         authorization: "bearer " + jwt.sign({}, "tr_secret_key"),
