@@ -29,10 +29,11 @@ export class GameRoom extends Room<GameState> {
   private Rid: string = "";
   private Lgo: boolean = false;
   private Rgo: boolean = false;
+  private gameMode: "RANKED" | "DUEL";
 
   private cleanup() {
     const winner =
-      this.inf.LeftPlayer.score > this.inf.RightPlayer.score || !this.Rgo
+      this.state.leftPlayer.score > this.state.rightPlayer.score || !this.Rgo
         ? this.inf.LeftPlayer
         : this.inf.RightPlayer;
     const looser =
@@ -119,6 +120,7 @@ export class GameRoom extends Room<GameState> {
     const side: boolean = Math.random() > 0.5 ? true : false;
     this.inf.LeftPlayer = side ? options.p1 : options.p2;
     this.inf.RightPlayer = side ? options.p2 : options.p1;
+    this.gameMode = options.gameMode;
 
     users = options.users;
     rooms = options.rooms;
@@ -168,6 +170,7 @@ export class GameRoom extends Room<GameState> {
           score: this.state.leftPlayer.score,
           side: "left",
         };
+        this.Lgo = false;
       } else if (client.sessionId === this.Rid) {
         Winner = {
           score: this.state.leftPlayer.score,
@@ -177,11 +180,13 @@ export class GameRoom extends Room<GameState> {
           score: this.state.rightPlayer.score,
           side: "right",
         };
+        this.Rgo = false;
       }
       this.broadcast("gameend", {
         Winner: Winner,
         Looser: Looser,
       });
+      this.cur = "end";
       await this.disconnect();
     });
     console.log("A gameRoom is created !");
@@ -199,16 +204,16 @@ export class GameRoom extends Room<GameState> {
 
   async onLeave(client: Client, consented: boolean) {
     console.log(client.sessionId, "- GameRoom - left!");
-    if (client.sessionId === this.Rid) this.Lgo = false;
-    else if (client.sessionId === this.Lid) this.Rgo = false;
+    if (this.cur !== "play") return;
+    if (client.sessionId === this.Rid) this.Rgo = false;
+    else if (client.sessionId === this.Lid) this.Lgo = false;
     else return this.setMetadata({ spectator: --this.spc });
     /* do not allow reconnection when gameend */
-    if (this.cur !== "play") return;
     try {
       if (consented) throw new Error("consented leave");
       const reco_client = await this.allowReconnection(client, 10);
-      if (client.sessionId === this.Rid) this.Lgo = true;
-      if (client.sessionId === this.Lid) this.Rgo = true;
+      if (client.sessionId === this.Rid) this.Rgo = true;
+      if (client.sessionId === this.Lid) this.Lgo = true;
       reco_client.send("gameInfo", this.inf);
     } catch (e) {
       /* 20 seconds expired. finish the game */
@@ -224,27 +229,40 @@ export class GameRoom extends Room<GameState> {
     users.delete(this.inf.LeftPlayer.id);
     users.delete(this.inf.RightPlayer.id);
 
-    const winner =
-      this.inf.LeftPlayer.score > this.inf.RightPlayer.score || !this.Rgo
-        ? this.inf.LeftPlayer
-        : this.inf.RightPlayer;
-    const loser =
-      winner === this.inf.LeftPlayer
-        ? this.inf.RightPlayer
-        : this.inf.LeftPlayer;
+    let winner;
+    let loser;
+    if (!this.Rgo) {
+      winner = this.inf.LeftPlayer;
+      loser = this.inf.RightPlayer;
+    } else if (!this.Lgo) {
+      winner = this.inf.RightPlayer;
+      loser = this.inf.LeftPlayer;
+    } else {
+      winner =
+        this.state.leftPlayer.score > this.state.rightPlayer.score
+          ? this.inf.LeftPlayer
+          : this.inf.RightPlayer;
+      loser =
+        winner === this.inf.LeftPlayer
+          ? this.inf.RightPlayer
+          : this.inf.LeftPlayer;
+    }
+    console.log("HERE3", this.gameMode);
+    console.log("HERE3] left", this.state.leftPlayer.score);
+    console.log("HERE3] right", this.state.rightPlayer.score);
     return post("http://localhost:3000/api/game/create-game", {
       headers: {
         authorization: "bearer " + jwt.sign({}, "tr_secret_key"),
       },
       body: {
-        category: "RANKED",
+        category: this.gameMode,
         winner: winner.id,
         loser: loser.id,
         score_winner:
           winner === this.inf.LeftPlayer
             ? this.state.leftPlayer.score
             : this.state.rightPlayer.score,
-        score_lose:
+        score_loser:
           loser === this.inf.LeftPlayer
             ? this.state.leftPlayer.score
             : this.state.rightPlayer.score,
