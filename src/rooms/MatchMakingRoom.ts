@@ -9,6 +9,7 @@ interface MatchGroup {
   averageRank: number;
   isDuel?: boolean;
   idForDuel?: number;
+  customisationDuel?: any;
 }
 
 interface ClientInfo {
@@ -21,6 +22,7 @@ interface ClientInfo {
   data?: any;
   isDuel: boolean;
   idForDuel: number;
+  customisationDuel?: any;
 }
 
 let users: undefined | Map<string, Session> = undefined;
@@ -80,6 +82,7 @@ export class MatchMakingRoom extends Room {
         rank: user.data.ladder.points,
         isDuel: options.isDuel,
         idForDuel: options.idForDuel,
+        customisationDuel: options.customisation,
       };
       this.AllClients.push(newClient);
     }
@@ -91,6 +94,7 @@ export class MatchMakingRoom extends Room {
       ready: false,
       averageRank: 0,
       isDuel: false,
+      customisationDuel: undefined,
     };
     this.groups.push(group);
     return group;
@@ -125,6 +129,7 @@ export class MatchMakingRoom extends Room {
           client.group = currentGroup;
           currentGroup.isDuel = true;
           currentGroup.idForDuel = client.idForDuel;
+          currentGroup.customisationDuel = client.customisationDuel;
         }
         continue;
       }
@@ -180,6 +185,7 @@ export class MatchMakingRoom extends Room {
           p1: group.joinedClients[0].data,
           p2: group.joinedClients[1].data,
           gameMode: group.isDuel ? "DUAL" : "RANKED",
+          customisation: group.customisationDuel,
         });
         group.joinedClients.map(async (client) => {
           const reservation = await matchMaker.reserveSeatFor(newRoom, {

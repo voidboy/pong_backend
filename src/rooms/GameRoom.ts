@@ -79,13 +79,13 @@ export class GameRoom extends Room<GameState> {
       Lplayer.score += 1;
       this.setMetadata({ Lscore: Lplayer.score });
       if (Lplayer.score === CONF.WIN_SCORE) this.cleanup();
-      ballReset(ball, "right");
+      ballReset(ball, "right", this.inf.customisation.ballSpeed);
     } else if (ballLeft(ball) <= 0) {
       /* right player scored a point */
       Rplayer.score += 1;
       this.setMetadata({ Rscore: Rplayer.score });
       if (Rplayer.score === CONF.WIN_SCORE) this.cleanup();
-      ballReset(ball, "left");
+      ballReset(ball, "left", this.inf.customisation.ballSpeed);
     } else if (
       playerTop(Lplayer) < ballBot(ball) &&
       playerBot(Lplayer) > ballTop(ball) &&
@@ -119,6 +119,7 @@ export class GameRoom extends Room<GameState> {
     const side: boolean = Math.random() > 0.5 ? true : false;
     this.inf.LeftPlayer = side ? options.p1 : options.p2;
     this.inf.RightPlayer = side ? options.p2 : options.p1;
+    this.inf.customisation = options.customisation;
     this.gameMode = options.gameMode;
 
     users = options.users;
@@ -149,6 +150,11 @@ export class GameRoom extends Room<GameState> {
       if (this.Lgo && this.Rgo) {
         this.broadcast("ready", {});
         this.cur = "play";
+        ballReset(
+          this.state.ball,
+          Math.random() > 0.5 ? "right" : "left",
+          this.inf.customisation.ballSpeed
+        );
         this.setSimulationInterval((deltaTime) => {
           this.simulate(deltaTime / 1000);
         });
