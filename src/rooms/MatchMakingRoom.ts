@@ -63,11 +63,14 @@ export class MatchMakingRoom extends Room {
         authorization: "bearer " + token,
       },
     });
+
+    /* prevent user for matching himself */
+    if (this.AllClients.find((client) => client.data.id === user.data.id))
+      return client.send("already_in_queue");
     /* here, we must check if client is not already playing a game, if so,
     we must transfer him back his game information which will allow him to 
     reconnect to his GameRoom and continue playing
     */
-
     const ongoing = users.get(user.data.id);
     if (ongoing !== undefined) {
       client.send("ongoing", ongoing);
@@ -209,7 +212,8 @@ export class MatchMakingRoom extends Room {
 
   onLeave(client: Client, consented: boolean) {
     const index = this.AllClients.findIndex((cli) => cli.client === client);
-    this.AllClients.splice(index, 1);
+    if (index !== -1)
+      this.AllClients.splice(index, 1);
     console.log("MatchMakingRoom -> Client left");
   }
 

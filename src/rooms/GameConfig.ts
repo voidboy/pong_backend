@@ -1,4 +1,4 @@
-export const GAME_WIDTH: number = 854;
+export const GAME_WIDTH: number = 720;
 export const GAME_HEIGHT: number = 480;
 export const PADDLE_WIDTH: number = 15;
 export const PADDLE_HEIGHT: number = 70;
