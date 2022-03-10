@@ -20,6 +20,7 @@ import { GameInfos, Session } from "./GameInfos";
 
 let users: undefined | Map<string, Session> = undefined;
 let rooms: undefined | Map<string, Array<string>> = undefined;
+let duels: undefined | Map<number, string> = undefined;
 
 export class GameRoom extends Room<GameState> {
   private spc: number = 0;
@@ -124,6 +125,7 @@ export class GameRoom extends Room<GameState> {
 
     users = options.users;
     rooms = options.rooms;
+    duels = options.duels;
     this.setState(new GameState());
     /* setup metadata for spectator game listing */
     this.setMetadata({

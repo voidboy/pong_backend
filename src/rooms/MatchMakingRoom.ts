@@ -7,9 +7,6 @@ interface MatchGroup {
   joinedClients: ClientInfo[];
   ready: boolean;
   averageRank: number;
-  isDuel?: boolean;
-  idForDuel?: number;
-  customisationDuel?: any;
 }
 
 interface ClientInfo {
@@ -20,13 +17,11 @@ interface ClientInfo {
   rankRange?: number;
   confirmed: boolean;
   data?: any;
-  isDuel: boolean;
-  idForDuel: number;
-  customisationDuel?: any;
 }
 
 let users: undefined | Map<string, Session> = undefined;
 let rooms: undefined | Map<string, Array<string>> = undefined;
+let duels: undefined | Map<number, string> = undefined;
 
 export class MatchMakingRoom extends Room {
   // List of clients in the 'queue' MatchMaking
@@ -34,7 +29,6 @@ export class MatchMakingRoom extends Room {
 
   // Groups made by the MatchMaking algo that we want
   groups: MatchGroup[] = [];
-  duelGroups: MatchGroup[] = [];
 
   constructor() {
     super();
@@ -53,6 +47,7 @@ export class MatchMakingRoom extends Room {
   onCreate(options: any) {
     users = options.users;
     rooms = options.rooms;
+    duels = options.duels;
     this.setSimulationInterval(() => this.makeGroups(), 500);
   }
 
@@ -65,8 +60,8 @@ export class MatchMakingRoom extends Room {
     });
 
     /* prevent user for matching himself */
-    if (this.AllClients.find((client) => client.data.id === user.data.id))
-      return client.send("already_in_queue");
+    // if (this.AllClients.find((client) => client.data.id === user.data.id))
+    //   return client.send("already_in_queue");
     /* here, we must check if client is not already playing a game, if so,
     we must transfer him back his game information which will allow him to 
     reconnect to his GameRoom and continue playing
@@ -83,11 +78,13 @@ export class MatchMakingRoom extends Room {
         rankRange: 0,
         data: user.data,
         rank: user.data.ladder.points,
-        isDuel: options.isDuel,
-        idForDuel: options.idForDuel,
-        customisationDuel: options.customisation,
       };
       this.AllClients.push(newClient);
+      users.set(user.data.id, {
+        roomId: undefined,
+        sessionId: undefined,
+        state: "WAITING_RANKED",
+      });
     }
   }
 
@@ -96,8 +93,6 @@ export class MatchMakingRoom extends Room {
       joinedClients: [],
       ready: false,
       averageRank: 0,
-      isDuel: false,
-      customisationDuel: undefined,
     };
     this.groups.push(group);
     return group;
@@ -114,28 +109,6 @@ export class MatchMakingRoom extends Room {
 
       if (client.group && client.group.ready === true) continue;
 
-      if (client.isDuel) {
-        if (
-          currentGroup.isDuel === true &&
-          currentGroup.joinedClients.length === 1 &&
-          currentGroup.idForDuel === client.idForDuel
-        ) {
-          currentGroup.joinedClients.push(client);
-          client.group = currentGroup;
-          currentGroup.ready = true;
-          currentGroup = this.createGroup();
-        } else if (
-          currentGroup.isDuel === false &&
-          currentGroup.joinedClients.length === 0
-        ) {
-          currentGroup.joinedClients.push(client);
-          client.group = currentGroup;
-          currentGroup.isDuel = true;
-          currentGroup.idForDuel = client.idForDuel;
-          currentGroup.customisationDuel = client.customisationDuel;
-        }
-        continue;
-      }
       // Increment waiting time
       client.waitingTime += this.clock.deltaTime;
 
@@ -157,7 +130,7 @@ export class MatchMakingRoom extends Room {
       currentGroup.joinedClients.push(client);
 
       // We want to match 2 clients so length must be 2
-      if (!currentGroup.isDuel && currentGroup.joinedClients.length === 2) {
+      if (currentGroup.joinedClients.length === 2) {
         let rank1 = currentGroup.joinedClients[0].rank;
         let rank2 = currentGroup.joinedClients[1].rank;
         const GroupRankDiff = rank1 > rank2 ? rank1 - rank2 : rank2 - rank1;
@@ -187,11 +160,8 @@ export class MatchMakingRoom extends Room {
         const newRoom = await matchMaker.createRoom("gameRoom", {
           p1: group.joinedClients[0].data,
           p2: group.joinedClients[1].data,
-          gameMode: group.isDuel ? "DUAL" : "RANKED",
-          customisation:
-            group.customisationDuel === undefined
-              ? { ballSpeed: 1, ballColor: "#ffffff" }
-              : group.customisationDuel,
+          gameMode: "RANKED",
+          customisation: { ballSpeed: 1, ballColor: "#ffffff" },
         });
         group.joinedClients.map(async (client) => {
           const reservation = await matchMaker.reserveSeatFor(newRoom, {
@@ -202,6 +172,7 @@ export class MatchMakingRoom extends Room {
           users.set(client.data.id, {
             roomId: reservation.room.roomId,
             sessionId: reservation.sessionId,
+            state: "IN_MATCHMAKING",
           });
           s.push(reservation.sessionId);
         });
@@ -212,8 +183,7 @@ export class MatchMakingRoom extends Room {
 
   onLeave(client: Client, consented: boolean) {
     const index = this.AllClients.findIndex((cli) => cli.client === client);
-    if (index !== -1)
-      this.AllClients.splice(index, 1);
+    if (index !== -1) this.AllClients.splice(index, 1);
     console.log("MatchMakingRoom -> Client left");
   }
 

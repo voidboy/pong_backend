@@ -8,4 +8,5 @@ export class GameInfos {
 export interface Session {
   roomId: string;
   sessionId: string;
+  state: string;
 }

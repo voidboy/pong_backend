@@ -1,5 +1,6 @@
 import { Session } from "./rooms/GameInfos";
 import { GameRoom } from "./rooms/GameRoom";
+import { DuelRoom } from "./rooms/DuelRoom";
 import { MatchMakingRoom } from "./rooms/MatchMakingRoom";
 import Arena from "@colyseus/arena";
 
@@ -11,12 +12,21 @@ export default Arena({
 
   initializeGameServer: (gameServer) => {
     gameServer
-      .define("gameRoom", GameRoom, { users: users, rooms: rooms })
+      .define("gameRoom", GameRoom, {
+        users: users,
+        rooms: rooms,
+      })
       .enableRealtimeListing();
     gameServer.define("MatchMakingRoom", MatchMakingRoom, {
       users: users,
       rooms: rooms,
     });
+    gameServer
+      .define("duelRoom", DuelRoom, {
+        users: users,
+        rooms: rooms,
+      })
+      .enableRealtimeListing();
   },
 
   /*
