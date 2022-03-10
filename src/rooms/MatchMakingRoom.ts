@@ -64,13 +64,12 @@ export class MatchMakingRoom extends Room {
       },
     });
 
-    /* prevent user for matching himself */
+    /* prevent user to join multiple times matchmaking */
     if (this.AllClients.find((client) => client.data.id === user.data.id))
       return client.send("already_in_queue");
     /* here, we must check if client is not already playing a game, if so,
     we must transfer him back his game information which will allow him to 
-    reconnect to his GameRoom and continue playing
-    */
+    reconnect to his GameRoom and continue playing */
     const ongoing = users.get(user.data.id);
     if (ongoing !== undefined) {
       client.send("ongoing", ongoing);
