@@ -185,7 +185,10 @@ export class MatchMakingRoom extends Room {
           p1: group.joinedClients[0].data,
           p2: group.joinedClients[1].data,
           gameMode: group.isDuel ? "DUAL" : "RANKED",
-          customisation: group.customisationDuel,
+          customisation:
+            group.customisationDuel === undefined
+              ? { ballSpeed: 1, ballColor: "#ffffff" }
+              : group.customisationDuel,
         });
         group.joinedClients.map(async (client) => {
           const reservation = await matchMaker.reserveSeatFor(newRoom, {
