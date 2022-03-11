@@ -19,7 +19,6 @@ export class DuelRoom extends Room {
 
   onCreate(options: any) {
     console.log("DuelRoom -> OnCreate()");
-    console.log("AllClients -> ", this.AllClients);
     users = options.users;
     rooms = options.rooms;
   }
@@ -44,49 +43,63 @@ export class DuelRoom extends Room {
     });
 
     // Push in users map
-    users.set(user.data.id, {
-      roomId: undefined,
-      sessionId: undefined,
-      state: "WAITING_DUEL",
-    });
-
-    // Push client in tab of clients
-    this.AllClients.set(user.data.id, {
-      client: client,
-      data: user.data,
-    });
-
-    const opponent = users.get(options.id2);
-    if (!opponent || opponent.state !== "WAITING_DUEL") return;
-    const group = [
-      this.AllClients.get(options.id1),
-      this.AllClients.get(options.id2),
-    ];
-    const newRoom = await matchMaker.createRoom("gameRoom", {
-      p1: group[0].data,
-      p2: group[1].data,
-      gameMode: "DUEL",
-      customisation: { ballSpeed: 1, ballColor: "#ffffff" },
-    });
-    const s = new Array<string>();
-    group.map(async (client) => {
-      const reservation = await matchMaker.reserveSeatFor(newRoom, {
-        self: client,
+    const player = users.get(user.data.id);
+    if (player && player.stateValue === "IDLE") {
+      player.setState("WAITING_DUEL");
+      this.AllClients.set(user.data.id, {
+        client: client,
+        data: user.data,
       });
-      client.client.send("seat", reservation);
-      users.set(client.data.id, {
-        roomId: reservation.room.roomIsd,
-        sessionId: reservation.sessionId,
-        state: "IN_DUEL",
+      const opponent = users.get(options.id2);
+      if (!opponent || opponent.stateValue !== "WAITING_DUEL") return;
+      const group = [
+        this.AllClients.get(options.id1),
+        this.AllClients.get(options.id2),
+      ];
+      const newRoom = await matchMaker.createRoom("gameRoom", {
+        p1: group[0].data,
+        p2: group[1].data,
+        gameMode: "DUEL",
+        customisation: { ballSpeed: 1, ballColor: "#ffffff" },
       });
-      s.push(reservation.sessionId);
-    });
-    rooms.set(newRoom.roomId, s);
+      const s = new Array<string>();
+      group.map(async (client) => {
+        const reservation = await matchMaker.reserveSeatFor(newRoom, {
+          self: client,
+        });
+        client.client.send("seat", reservation);
+        //client.client.leave();
+        const player = users.get(client.data.id);
+        if (player) {
+          player.setState("IN_DUEL");
+          player.roomId = newRoom.roomId;
+          player.sessionId = reservation.sessionId;
+        }
+        s.push(reservation.sessionId);
+      });
+      rooms.set(newRoom.roomId, s);
+    } else if (player) {
+      const current_state = player.stateValue;
+      if (current_state === "IN_DUEL") {
+        const room = rooms.get(player.roomId);
+        client.send("state_incompatible", { state: "IN_DUEL", room: room });
+      } else if (current_state === "IN_RANKED") {
+        /* reconnection */
+      } else if (current_state === "WAITING_DUEL") {
+      } else if (current_state === "WAITING_RANKED") {
+      }
+    } else {
+      client.error(4042, "You must connect to serviceRoom first.");
+      return client.leave();
+    }
+    console.log("New Client Joined DuelRoom ! ", client.sessionId);
   }
 
   onLeave(client: Client, consented: boolean) {
     console.log("DuelRoom -> Client left");
-    // this.AllClients.clear();
+    this.AllClients.forEach((val: ClientInfo, key) => {
+      if (val.client === client) this.AllClients.delete(key);
+    });
   }
 
   onDispose() {

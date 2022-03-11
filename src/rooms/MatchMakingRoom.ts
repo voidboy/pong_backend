@@ -21,11 +21,12 @@ interface ClientInfo {
 
 let users: undefined | Map<string, Session> = undefined;
 let rooms: undefined | Map<string, Array<string>> = undefined;
-let duels: undefined | Map<number, string> = undefined;
 
 export class MatchMakingRoom extends Room {
   // List of clients in the 'queue' MatchMaking
   AllClients: ClientInfo[] = [];
+
+  private client_mapping = new Map<Client, string>();
 
   // Groups made by the MatchMaking algo that we want
   groups: MatchGroup[] = [];
@@ -34,7 +35,7 @@ export class MatchMakingRoom extends Room {
     super();
   }
 
-  async onAuth(client, options, request): Promise<boolean> {
+  async onAuth(client: Client, options, request): Promise<boolean> {
     try {
       const token: string = options.authorization.split(" ")[1];
       jwt.verify(token, "tr_secret_key");
@@ -47,30 +48,35 @@ export class MatchMakingRoom extends Room {
   onCreate(options: any) {
     users = options.users;
     rooms = options.rooms;
-    duels = options.duels;
     this.setSimulationInterval(() => this.makeGroups(), 500);
   }
 
   async onJoin(client: Client, options: any) {
+    console.log("New Client Joined MatchMakingRoom ! ", client.sessionId);
     const token: string = options.authorization.split(" ")[1];
     const user = await get("http://localhost:3000/api/user", {
       headers: {
         authorization: "bearer " + token,
       },
     });
+    /* cancel mathmakin */
+    this.onMessage("cancel", (client, message) => {
+      const client_id = this.client_mapping.get(client);
 
-    /* prevent user for matching himself */
-    // if (this.AllClients.find((client) => client.data.id === user.data.id))
-    //   return client.send("already_in_queue");
-    /* here, we must check if client is not already playing a game, if so,
-    we must transfer him back his game information which will allow him to 
-    reconnect to his GameRoom and continue playing
-    */
-    const ongoing = users.get(user.data.id);
-    if (ongoing !== undefined) {
-      client.send("ongoing", ongoing);
-    } else {
-      console.log("New Client Joined MatchMakingRoom ! ", client.sessionId);
+      const player = users.get(client_id);
+      if (player) {
+        player.setState("IDLE");
+        client.leave();
+      }
+    });
+    const player = users.get(user.data.id);
+
+    //
+    // 
+
+    /* Player is IDLE, OK */
+    if (player && player.stateValue === "IDLE") {
+      player.setState("WAITING_RANKED");
       let newClient = {
         client: client,
         waitingTime: 0,
@@ -80,11 +86,31 @@ export class MatchMakingRoom extends Room {
         rank: user.data.ladder.points,
       };
       this.AllClients.push(newClient);
-      users.set(user.data.id, {
-        roomId: undefined,
-        sessionId: undefined,
-        state: "WAITING_RANKED",
-      });
+      this.client_mapping.set(client, user.data.id);
+      console.log('HERE -> CLIENT ADDED')
+
+      /* Player NOT IDLE, callback on stateValue */
+    } else if (player) {
+      const current_state = player.stateValue;
+      if (current_state === "IN_DUEL") {
+        const room = rooms.get(player.roomId);
+        client.send("state_incompatible", { state: "IN_DUEL", room: room });
+      } else if (current_state === "IN_RANKED") {
+        /* reconnection */
+      } else if (current_state === "WAITING_DUEL") {
+      } else if (current_state === "WAITING_RANKED") {
+        const player = this.AllClients.find(
+          (cli) => cli.data.id === user.data.id
+        );
+        player.client.leave();
+        this.client_mapping.delete(player.client);
+        this.client_mapping.set(client, player.data.id)
+        player.client = client;
+        console.log('HERE -> CLIENT NOT ADDED -> WAITING');
+      }
+    } else {
+      client.error(4042, "You must connect to serviceRoom first.");
+      return client.leave();
     }
   }
 
@@ -169,11 +195,12 @@ export class MatchMakingRoom extends Room {
           });
           client.client.send("seat", reservation);
           client.client.leave();
-          users.set(client.data.id, {
-            roomId: reservation.room.roomId,
-            sessionId: reservation.sessionId,
-            state: "IN_MATCHMAKING",
-          });
+          const player = users.get(client.data.id);
+          if (player) {
+            player.setState("IN_RANKED");
+            player.roomId = newRoom.roomId;
+            player.sessionId = reservation.sessionId;
+          }
           s.push(reservation.sessionId);
         });
         rooms.set(newRoom.roomId, s);
@@ -183,8 +210,22 @@ export class MatchMakingRoom extends Room {
 
   onLeave(client: Client, consented: boolean) {
     const index = this.AllClients.findIndex((cli) => cli.client === client);
+    console.log("DELETE : ", index);
     if (index !== -1) this.AllClients.splice(index, 1);
-    console.log("MatchMakingRoom -> Client left");
+    console.log("MatchMakingRoom -> Client left ! ", client.sessionId);
+
+    // delete in cli_map
+    const player = this.client_mapping.get(client);
+    this.client_mapping.forEach((val, key) => {
+      /* If they are multiples client connected with the 
+      same account, do not delete it from users, keep the
+      user until there is only 1 client linked to it */
+      if (val === player) {
+        if (key === client) {
+          this.client_mapping.delete(client);
+        }
+      }
+    });
   }
 
   onDispose() {

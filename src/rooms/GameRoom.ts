@@ -16,21 +16,29 @@ import {
   playerRight,
   playerLeft,
 } from "./utils";
-import { GameInfos, Session } from "./GameInfos";
+import { GameInfos, Session, State } from "./GameInfos";
 
 let users: undefined | Map<string, Session> = undefined;
 let rooms: undefined | Map<string, Array<string>> = undefined;
-let duels: undefined | Map<number, string> = undefined;
 
 export class GameRoom extends Room<GameState> {
-  private spc: number = 0;
-  private cur: "wait" | "play" | "end" = "wait";
+  private spectator: number = 0;
+  private pong_state: "wait" | "play" | "end" = "wait";
   private inf: GameInfos = new GameInfos();
   private Lid: string = "";
   private Rid: string = "";
   private Lgo: boolean = false;
   private Rgo: boolean = false;
   private gameMode: "RANKED" | "DUEL";
+
+  private updateState(newState: State) {
+    [
+      users.get(this.inf.LeftPlayer.id),
+      users.get(this.inf.RightPlayer.id),
+    ].forEach((client) => {
+      client.setState(newState);
+    });
+  }
 
   private cleanup() {
     const winner =
@@ -57,7 +65,7 @@ export class GameRoom extends Room<GameState> {
         side: looser === this.inf.LeftPlayer ? "left" : "right",
       },
     });
-    this.cur = "end";
+    this.updateState("IDLE");
     this.disconnect();
   }
 
@@ -125,7 +133,6 @@ export class GameRoom extends Room<GameState> {
 
     users = options.users;
     rooms = options.rooms;
-    duels = options.duels;
     this.setState(new GameState());
     /* setup metadata for spectator game listing */
     this.setMetadata({
@@ -138,7 +145,8 @@ export class GameRoom extends Room<GameState> {
     this.setPatchRate(16);
 
     this.clock.setTimeout(async () => {
-      if ((!this.Lgo || !this.Rgo) && this.cur === "wait") {
+      if ((!this.Lgo || !this.Rgo) && this.pong_state === "wait") {
+        this.updateState("IDLE");
         await this.disconnect();
       }
     }, 20000);
@@ -151,7 +159,7 @@ export class GameRoom extends Room<GameState> {
       if (client.sessionId === this.Rid) this.Rgo = true;
       if (this.Lgo && this.Rgo) {
         this.broadcast("ready", {});
-        this.cur = "play";
+        this.pong_state = "play";
         ballReset(
           this.state.ball,
           Math.random() > 0.5 ? "right" : "left",
@@ -163,7 +171,9 @@ export class GameRoom extends Room<GameState> {
       }
     });
     this.onMessage("cancelgame", (client, message) => {
+      this.updateState("IDLE");
       this.broadcast("cancelgame", message);
+      this.disconnect();
     });
     this.onMessage("giveup", async (client, message) => {
       let Winner = {};
@@ -193,7 +203,7 @@ export class GameRoom extends Room<GameState> {
         Winner: Winner,
         Looser: Looser,
       });
-      this.cur = "end";
+      this.updateState("IDLE");
       await this.disconnect();
     });
     console.log("A gameRoom is created !");
@@ -204,20 +214,22 @@ export class GameRoom extends Room<GameState> {
       const player_id = options.self.data.id;
       if (player_id === this.inf.LeftPlayer.id) this.Lid = client.sessionId;
       if (player_id === this.inf.RightPlayer.id) this.Rid = client.sessionId;
-    } else this.setMetadata({ spectator: ++this.spc });
+    } else this.setMetadata({ spectator: ++this.spectator });
+    /* CHECK IF VALID STATE */
     client.send("gameInfo", this.inf);
     console.log(client.sessionId, " - GameRoom - join!");
   }
 
   async onLeave(client: Client, consented: boolean) {
     console.log(client.sessionId, "- GameRoom - left!");
-    if (this.cur !== "play") return;
+    if (this.pong_state !== "play") return;
     if (client.sessionId === this.Rid) this.Rgo = false;
     else if (client.sessionId === this.Lid) this.Lgo = false;
-    else return this.setMetadata({ spectator: --this.spc });
+    else return this.setMetadata({ spectator: --this.spectator });
     /* do not allow reconnection when gameend */
     try {
       if (consented) throw new Error("consented leave");
+      /* we must update the state HERE */
       const reco_client = await this.allowReconnection(client, 10);
       if (client.sessionId === this.Rid) this.Rgo = true;
       if (client.sessionId === this.Lid) this.Lgo = true;
@@ -232,9 +244,6 @@ export class GameRoom extends Room<GameState> {
     console.log("GameRoom disposed !");
     /* cleanup room entry */
     rooms.delete(this.roomId);
-    /* free users from link */
-    users.delete(this.inf.LeftPlayer.id);
-    users.delete(this.inf.RightPlayer.id);
 
     let winner;
     let loser;
