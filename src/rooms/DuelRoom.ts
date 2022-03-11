@@ -82,9 +82,11 @@ export class DuelRoom extends Room {
       const current_state = player.stateValue;
       if (current_state === "IN_DUEL") {
         const room = rooms.get(player.roomId);
-        client.send("state_incompatible", { state: "IN_DUEL", room: room });
+        player.client.send("state_incompatible", { state: "IN_DUEL", room: room });
       } else if (current_state === "IN_RANKED") {
         /* reconnection */
+        const room = rooms.get(player.roomId);
+        player.client.send("state_incompatible", { state: "IN_RANKED", room: room });
       } else if (current_state === "WAITING_DUEL") {
       } else if (current_state === "WAITING_RANKED") {
       }

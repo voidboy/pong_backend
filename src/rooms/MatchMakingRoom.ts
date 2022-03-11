@@ -72,7 +72,7 @@ export class MatchMakingRoom extends Room {
     const player = users.get(user.data.id);
 
     //
-    // 
+    //
 
     /* Player is IDLE, OK */
     if (player && player.stateValue === "IDLE") {
@@ -87,16 +87,19 @@ export class MatchMakingRoom extends Room {
       };
       this.AllClients.push(newClient);
       this.client_mapping.set(client, user.data.id);
-      console.log('HERE -> CLIENT ADDED')
 
       /* Player NOT IDLE, callback on stateValue */
     } else if (player) {
       const current_state = player.stateValue;
       if (current_state === "IN_DUEL") {
         const room = rooms.get(player.roomId);
-        client.send("state_incompatible", { state: "IN_DUEL", room: room });
+        player.client.send("state_incompatible", {
+          state: "IN_DUEL",
+          room: room,
+        });
       } else if (current_state === "IN_RANKED") {
-        /* reconnection */
+        const room = rooms.get(player.roomId);
+        player.client.send("state_incompatible", { state: "IN_RANKED", room: room });
       } else if (current_state === "WAITING_DUEL") {
       } else if (current_state === "WAITING_RANKED") {
         const player = this.AllClients.find(
@@ -104,9 +107,8 @@ export class MatchMakingRoom extends Room {
         );
         player.client.leave();
         this.client_mapping.delete(player.client);
-        this.client_mapping.set(client, player.data.id)
+        this.client_mapping.set(client, player.data.id);
         player.client = client;
-        console.log('HERE -> CLIENT NOT ADDED -> WAITING');
       }
     } else {
       client.error(4042, "You must connect to serviceRoom first.");
@@ -210,7 +212,6 @@ export class MatchMakingRoom extends Room {
 
   onLeave(client: Client, consented: boolean) {
     const index = this.AllClients.findIndex((cli) => cli.client === client);
-    console.log("DELETE : ", index);
     if (index !== -1) this.AllClients.splice(index, 1);
     console.log("MatchMakingRoom -> Client left ! ", client.sessionId);
 

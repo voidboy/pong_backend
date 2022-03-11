@@ -32,7 +32,6 @@ export type State =
   | "IDLE"
   | "WAITING_RANKED"
   | "WAITING_DUEL"
-  | "RECONNECTING"
   | "LOOKING"
   | "IN_RANKED"
   | "IN_DUEL";
