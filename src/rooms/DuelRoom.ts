@@ -71,7 +71,7 @@ export class DuelRoom extends Room {
         //client.client.leave();
         const player = users.get(client.data.id);
         if (player) {
-          player.setState("IN_DUEL");
+          player.setState("IN_ACCEPT");
           player.roomId = newRoom.roomId;
           player.sessionId = reservation.sessionId;
         }

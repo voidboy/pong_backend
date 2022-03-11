@@ -18,7 +18,6 @@ export class Session {
   setState(newState: State) {
     this.stateValue = newState;
     this.client.send('state', newState);
-    console.log('this.client -> ', this.client.id, this.user.data.id);
   }
 
   constructor(user: any, client: Client, stateValue: State) {
@@ -34,4 +33,5 @@ export type State =
   | "WAITING_DUEL"
   | "LOOKING"
   | "IN_RANKED"
-  | "IN_DUEL";
+  | "IN_DUEL"
+  | "IN_ACCEPT";

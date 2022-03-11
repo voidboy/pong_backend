@@ -34,14 +34,11 @@ export class ServiceRoom extends Room {
         authorization: "bearer " + token,
       },
     });
-    /* initialize user state */
 
-    // MAP <SESSIONID, USER.ID> ???
     const player = users.get(user.data.id);
 
     if (player === undefined) {
       users.set(user.data.id, new Session(user, client, "IDLE"));
-      console.log('onJoin -> client.id ', client.id, user.data.id);
     }
 
     this.client_mapping.set(client, user.data.id);

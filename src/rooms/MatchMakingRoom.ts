@@ -71,9 +71,6 @@ export class MatchMakingRoom extends Room {
     });
     const player = users.get(user.data.id);
 
-    //
-    //
-
     /* Player is IDLE, OK */
     if (player && player.stateValue === "IDLE") {
       player.setState("WAITING_RANKED");
@@ -98,8 +95,11 @@ export class MatchMakingRoom extends Room {
           room: room,
         });
       } else if (current_state === "IN_RANKED") {
-        const room = rooms.get(player.roomId);
-        player.client.send("state_incompatible", { state: "IN_RANKED", room: room });
+        player.client.send("state_incompatible", {
+          state: "IN_RANKED",
+          roomId: player.roomId,
+          sessionId: player.sessionId,
+        });
       } else if (current_state === "WAITING_DUEL") {
       } else if (current_state === "WAITING_RANKED") {
         const player = this.AllClients.find(
@@ -174,7 +174,6 @@ export class MatchMakingRoom extends Room {
      ** For our clients that we matched
      */
 
-    //console.log(this.groups);
 
     this.createRoomsForReadyGroups();
   }
@@ -199,7 +198,7 @@ export class MatchMakingRoom extends Room {
           client.client.leave();
           const player = users.get(client.data.id);
           if (player) {
-            player.setState("IN_RANKED");
+            player.setState("IN_ACCEPT");
             player.roomId = newRoom.roomId;
             player.sessionId = reservation.sessionId;
           }

@@ -36,11 +36,12 @@ export class GameRoom extends Room<GameState> {
       users.get(this.inf.LeftPlayer.id),
       users.get(this.inf.RightPlayer.id),
     ].forEach((client) => {
-      client.setState(newState);
+      if (client) client.setState(newState);
     });
   }
 
-  private cleanup() {
+  private end() {
+    this.pong_state = "end";
     const winner =
       this.state.leftPlayer.score > this.state.rightPlayer.score || !this.Rgo
         ? this.inf.LeftPlayer
@@ -65,7 +66,6 @@ export class GameRoom extends Room<GameState> {
         side: looser === this.inf.LeftPlayer ? "left" : "right",
       },
     });
-    this.updateState("IDLE");
     this.disconnect();
   }
 
@@ -87,13 +87,13 @@ export class GameRoom extends Room<GameState> {
     } else if (ballRight(ball) >= CONF.GAME_WIDTH) {
       Lplayer.score += 1;
       this.setMetadata({ Lscore: Lplayer.score });
-      if (Lplayer.score === CONF.WIN_SCORE) this.cleanup();
+      if (Lplayer.score === CONF.WIN_SCORE) this.end();
       ballReset(ball, "right", this.inf.customisation.ballSpeed);
     } else if (ballLeft(ball) <= 0) {
       /* right player scored a point */
       Rplayer.score += 1;
       this.setMetadata({ Rscore: Rplayer.score });
-      if (Rplayer.score === CONF.WIN_SCORE) this.cleanup();
+      if (Rplayer.score === CONF.WIN_SCORE) this.end();
       ballReset(ball, "left", this.inf.customisation.ballSpeed);
     } else if (
       playerTop(Lplayer) < ballBot(ball) &&
@@ -158,6 +158,7 @@ export class GameRoom extends Room<GameState> {
       if (client.sessionId === this.Lid) this.Lgo = true;
       if (client.sessionId === this.Rid) this.Rgo = true;
       if (this.Lgo && this.Rgo) {
+        this.updateState(("IN_" + this.gameMode) as State);
         this.broadcast("ready", {});
         this.pong_state = "play";
         ballReset(
@@ -203,7 +204,7 @@ export class GameRoom extends Room<GameState> {
         Winner: Winner,
         Looser: Looser,
       });
-      this.updateState("IDLE");
+      // this.updateState("IDLE");
       await this.disconnect();
     });
     console.log("A gameRoom is created !");
@@ -236,7 +237,13 @@ export class GameRoom extends Room<GameState> {
       reco_client.send("gameInfo", this.inf);
     } catch (e) {
       /* 20 seconds expired. finish the game */
-      this.cleanup();
+      if (this.pong_state !== "end") {
+        const Lplayer = users.get(this.inf.LeftPlayer.id);
+        Lplayer.setState("IDLE");
+        const Rplayer = users.get(this.inf.RightPlayer.id);
+        Rplayer.setState("IDLE");
+        this.end();
+      }
     }
   }
 
