@@ -102,13 +102,15 @@ export class MatchMakingRoom extends Room {
         });
       } else if (current_state === "WAITING_DUEL") {
       } else if (current_state === "WAITING_RANKED") {
-        const player = this.AllClients.find(
+        // if 2 tab for one user -> we destroy the previous client 'matchmaking'
+        // to replace him by the new one then we need to send him the state 'WAITING_RANKED'
+        const curr_player = this.AllClients.find(
           (cli) => cli.data.id === user.data.id
         );
-        player.client.leave();
-        this.client_mapping.delete(player.client);
-        this.client_mapping.set(client, player.data.id);
-        player.client = client;
+        curr_player.client.leave();
+        this.client_mapping.delete(curr_player.client);
+        this.client_mapping.set(client, curr_player.data.id);
+        curr_player.client = client;
       }
     } else {
       client.error(4042, "You must connect to serviceRoom first.");
@@ -173,7 +175,6 @@ export class MatchMakingRoom extends Room {
      ** Time to check if we can create GameRooms
      ** For our clients that we matched
      */
-
 
     this.createRoomsForReadyGroups();
   }

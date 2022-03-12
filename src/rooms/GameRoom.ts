@@ -1,10 +1,10 @@
-import { Room, Client } from "colyseus";
+import { Room, Client, ServerError } from "colyseus";
 import { GameState } from "./GameState";
 import { Ball } from "./Ball";
 import { Player } from "./Player";
 import * as CONF from "./GameConfig";
 import * as jwt from "jsonwebtoken";
-import { post } from "httpie";
+import * as HTTP from "httpie";
 import {
   ballTop,
   ballBot,
@@ -22,7 +22,6 @@ let users: undefined | Map<string, Session> = undefined;
 let rooms: undefined | Map<string, Array<string>> = undefined;
 
 export class GameRoom extends Room<GameState> {
-  private spectator: number = 0;
   private pong_state: "wait" | "play" | "end" = "wait";
   private inf: GameInfos = new GameInfos();
   private Lid: string = "";
@@ -30,8 +29,9 @@ export class GameRoom extends Room<GameState> {
   private Lgo: boolean = false;
   private Rgo: boolean = false;
   private gameMode: "RANKED" | "DUEL";
+  private spectator: Map<Client, string> = new Map<Client, string>();
 
-  private updateState(newState: State) {
+  private updatePlayersState(newState: State) {
     [
       users.get(this.inf.LeftPlayer.id),
       users.get(this.inf.RightPlayer.id),
@@ -65,6 +65,14 @@ export class GameRoom extends Room<GameState> {
             : this.state.rightPlayer.score,
         side: looser === this.inf.LeftPlayer ? "left" : "right",
       },
+    });
+    const Lplayer = users.get(this.inf.LeftPlayer.id);
+    Lplayer.setState("IDLE");
+    const Rplayer = users.get(this.inf.RightPlayer.id);
+    Rplayer.setState("IDLE");
+    this.spectator.forEach((val, key) => {
+      const spec = users.get(val);
+      if (spec) spec.setState("IDLE");
     });
     this.disconnect();
   }
@@ -146,7 +154,7 @@ export class GameRoom extends Room<GameState> {
 
     this.clock.setTimeout(async () => {
       if ((!this.Lgo || !this.Rgo) && this.pong_state === "wait") {
-        this.updateState("IDLE");
+        this.updatePlayersState("IDLE");
         await this.disconnect();
       }
     }, 20000);
@@ -158,7 +166,7 @@ export class GameRoom extends Room<GameState> {
       if (client.sessionId === this.Lid) this.Lgo = true;
       if (client.sessionId === this.Rid) this.Rgo = true;
       if (this.Lgo && this.Rgo) {
-        this.updateState(("IN_" + this.gameMode) as State);
+        this.updatePlayersState(("IN_" + this.gameMode) as State);
         this.broadcast("ready", {});
         this.pong_state = "play";
         ballReset(
@@ -172,7 +180,7 @@ export class GameRoom extends Room<GameState> {
       }
     });
     this.onMessage("cancelgame", (client, message) => {
-      this.updateState("IDLE");
+      this.updatePlayersState("IDLE");
       this.broadcast("cancelgame", message);
       this.disconnect();
     });
@@ -210,12 +218,27 @@ export class GameRoom extends Room<GameState> {
     console.log("A gameRoom is created !");
   }
 
-  onJoin(client: Client, options: any) {
+  async onJoin(client: Client, options: any) {
     if (rooms.get(this.roomId).find((id) => id === client.sessionId)) {
       const player_id = options.self.data.id;
       if (player_id === this.inf.LeftPlayer.id) this.Lid = client.sessionId;
       if (player_id === this.inf.RightPlayer.id) this.Rid = client.sessionId;
-    } else this.setMetadata({ spectator: ++this.spectator });
+    } else {
+      const token: string = options.token;
+      console.log("onJoin -> ", options);
+      let user: HTTP.Response = await HTTP.get(
+        "http://localhost:3000/api/user",
+        {
+          headers: {
+            authorization: "bearer " + token,
+          },
+        }
+      );
+      if (user) {
+        this.spectator.set(client, user.data.id);
+        this.setMetadata({ spectator: this.spectator.size });
+      } else client.leave();
+    }
     /* CHECK IF VALID STATE */
     client.send("gameInfo", this.inf);
     console.log(client.sessionId, " - GameRoom - join!");
@@ -226,7 +249,11 @@ export class GameRoom extends Room<GameState> {
     if (this.pong_state !== "play") return;
     if (client.sessionId === this.Rid) this.Rgo = false;
     else if (client.sessionId === this.Lid) this.Lgo = false;
-    else return this.setMetadata({ spectator: --this.spectator });
+    else {
+      this.spectator.delete(client);
+      this.setMetadata({ spectator: this.spectator.size });
+      return;
+    }
     /* do not allow reconnection when gameend */
     try {
       if (consented) throw new Error("consented leave");
@@ -238,10 +265,6 @@ export class GameRoom extends Room<GameState> {
     } catch (e) {
       /* 20 seconds expired. finish the game */
       if (this.pong_state !== "end") {
-        const Lplayer = users.get(this.inf.LeftPlayer.id);
-        Lplayer.setState("IDLE");
-        const Rplayer = users.get(this.inf.RightPlayer.id);
-        Rplayer.setState("IDLE");
         this.end();
       }
     }
@@ -270,7 +293,7 @@ export class GameRoom extends Room<GameState> {
           ? this.inf.RightPlayer
           : this.inf.LeftPlayer;
     }
-    return post("http://localhost:3000/api/game/create-game", {
+    return HTTP.post("http://localhost:3000/api/game/create-game", {
       headers: {
         authorization: "bearer " + jwt.sign({}, "tr_secret_key"),
       },
@@ -289,4 +312,7 @@ export class GameRoom extends Room<GameState> {
       },
     });
   }
+}
+function get(arg0: string, arg1: { headers: { authorization: string } }) {
+  throw new Error("Function not implemented.");
 }

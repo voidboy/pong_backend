@@ -7,6 +7,7 @@ import { ServiceRoom } from "./rooms/ServiceRoom";
 
 const users = new Map<string, Session>();
 const rooms = new Map<string, Array<string>>();
+const connected = new Set<string>();
 
 export default Arena({
   getId: () => "Infinity_Pong_backend",
@@ -15,23 +16,25 @@ export default Arena({
     gameServer.define("serviceRoom", ServiceRoom, {
       users: users,
       rooms: rooms,
+      connected: connected,
     });
     gameServer
       .define("gameRoom", GameRoom, {
         users: users,
         rooms: rooms,
+        connected: connected,
       })
       .enableRealtimeListing();
     gameServer.define("matchmakingRoom", MatchMakingRoom, {
       users: users,
       rooms: rooms,
+      connected: connected,
     });
-    gameServer
-      .define("duelRoom", DuelRoom, {
-        users: users,
-        rooms: rooms,
-      })
-      .enableRealtimeListing();
+    gameServer.define("duelRoom", DuelRoom, {
+      users: users,
+      rooms: rooms,
+      connected: connected,
+    });
   },
 
   /*
