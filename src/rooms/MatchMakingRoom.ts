@@ -149,7 +149,7 @@ export class MatchMakingRoom extends Room {
       // Everytime a client has waited more than 5 seconds,
       // we increment rankRange to find match eventually
       if (client.waitingTime > 5000) {
-        client.rankRange += 1000;
+        client.rankRange += 50;
         client.waitingTime = 0;
       }
 
