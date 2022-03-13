@@ -45,11 +45,13 @@ export class GameRoom extends Room<GameState> {
     const R = users.get(this.inf.RightPlayer.id);
     this.updatePlayersState("IDLE");
     L.client.send("cancel", {
-      previous_state: "WAITING_RANKED",
+      previous_state:
+        this.gameMode === "DUEL" ? "WAITING_DUEL" : "WAITING_RANKED",
       retry: this.Lgo,
     });
     R.client.send("cancel", {
-      previous_state: "WAITING_RANKED",
+      previous_state:
+        this.gameMode === "DUEL" ? "WAITING_DUEL" : "WAITING_RANKED",
       retry: this.Rgo,
     });
     await this.disconnect();
