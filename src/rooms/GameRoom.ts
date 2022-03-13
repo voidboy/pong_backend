@@ -40,6 +40,15 @@ export class GameRoom extends Room<GameState> {
     });
   }
 
+  private async cancelGame() {
+    const L = users.get(this.inf.LeftPlayer.id);
+    const R = users.get(this.inf.RightPlayer.id);
+    this.updatePlayersState("IDLE");
+    L.client.send("cancel", { previous_state: "WAITING_RANKED", retry: this.Lgo });
+    R.client.send("cancel", { previous_state: "WAITING_RANKED", retry: this.Rgo });
+    await this.disconnect();
+  }
+
   private end() {
     this.pong_state = "end";
     const winner =
@@ -153,9 +162,10 @@ export class GameRoom extends Room<GameState> {
     this.setPatchRate(16);
 
     this.clock.setTimeout(async () => {
+      const L = users.get(this.inf.LeftPlayer.id);
+      const R = users.get(this.inf.RightPlayer.id);
       if ((!this.Lgo || !this.Rgo) && this.pong_state === "wait") {
-        this.updatePlayersState("IDLE");
-        await this.disconnect();
+        await this.cancelGame();
       }
     }, 20000);
     this.onMessage("move", (client, message) => {
@@ -179,10 +189,10 @@ export class GameRoom extends Room<GameState> {
         });
       }
     });
-    this.onMessage("cancelgame", (client, message) => {
-      this.updatePlayersState("IDLE");
-      this.broadcast("cancelgame", message);
-      this.disconnect();
+    this.onMessage("cancel", async (client, message) => {
+      if (this.Lid === client.sessionId) this.Rgo = true;
+      if (this.Rid === client.sessionId) this.Lgo = true;
+      await this.cancelGame();
     });
     this.onMessage("giveup", async (client, message) => {
       let Winner = {};
@@ -225,7 +235,6 @@ export class GameRoom extends Room<GameState> {
       if (player_id === this.inf.RightPlayer.id) this.Rid = client.sessionId;
     } else {
       const token: string = options.token;
-      console.log("onJoin -> ", options);
       let user: HTTP.Response = await HTTP.get(
         "http://localhost:3000/api/user",
         {
@@ -235,6 +244,9 @@ export class GameRoom extends Room<GameState> {
         }
       );
       if (user) {
+        const spectator = users.get(user.data.id);
+        if (spectator) spectator.setState("LOOKING");
+        /* else he/she was not connected to service room */
         this.spectator.set(client, user.data.id);
         this.setMetadata({ spectator: this.spectator.size });
       } else client.leave();

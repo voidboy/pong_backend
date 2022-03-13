@@ -107,10 +107,12 @@ export class MatchMakingRoom extends Room {
         const curr_player = this.AllClients.find(
           (cli) => cli.data.id === user.data.id
         );
-        curr_player.client.leave();
-        this.client_mapping.delete(curr_player.client);
-        this.client_mapping.set(client, curr_player.data.id);
-        curr_player.client = client;
+        if (curr_player) {
+          curr_player.client.leave();
+          this.client_mapping.delete(curr_player.client);
+          this.client_mapping.set(client, curr_player.data.id);
+          curr_player.client = client;
+        }
       }
     } else {
       client.error(4042, "You must connect to serviceRoom first.");
