@@ -44,8 +44,14 @@ export class GameRoom extends Room<GameState> {
     const L = users.get(this.inf.LeftPlayer.id);
     const R = users.get(this.inf.RightPlayer.id);
     this.updatePlayersState("IDLE");
-    L.client.send("cancel", { previous_state: "WAITING_RANKED", retry: this.Lgo });
-    R.client.send("cancel", { previous_state: "WAITING_RANKED", retry: this.Rgo });
+    L.client.send("cancel", {
+      previous_state: "WAITING_RANKED",
+      retry: this.Lgo,
+    });
+    R.client.send("cancel", {
+      previous_state: "WAITING_RANKED",
+      retry: this.Rgo,
+    });
     await this.disconnect();
   }
 
@@ -195,6 +201,7 @@ export class GameRoom extends Room<GameState> {
       await this.cancelGame();
     });
     this.onMessage("giveup", async (client, message) => {
+      this.pong_state = "end";
       let Winner = {};
       let Looser = {};
       if (client.sessionId === this.Lid) {
@@ -222,8 +229,15 @@ export class GameRoom extends Room<GameState> {
         Winner: Winner,
         Looser: Looser,
       });
-      // this.updateState("IDLE");
-      await this.disconnect();
+      const Lplayer = users.get(this.inf.LeftPlayer.id);
+      Lplayer.setState("IDLE");
+      const Rplayer = users.get(this.inf.RightPlayer.id);
+      Rplayer.setState("IDLE");
+      this.spectator.forEach((val, key) => {
+        const spec = users.get(val);
+        if (spec) spec.setState("IDLE");
+      });
+      this.disconnect();
     });
     console.log("A gameRoom is created !");
   }
@@ -279,6 +293,13 @@ export class GameRoom extends Room<GameState> {
       if (this.pong_state !== "end") {
         this.end();
       }
+      let user_to_delete;
+      if (client.sessionId === this.Lid)
+        user_to_delete = this.inf.LeftPlayer.id;
+      if (client.sessionId === this.Rid)
+        user_to_delete = this.inf.RightPlayer.id;
+      console.log("HERE onLeave -> ", user_to_delete);
+      users.delete(user_to_delete);
     }
   }
 

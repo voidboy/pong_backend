@@ -78,7 +78,7 @@ export class MatchMakingRoom extends Room {
         client: client,
         waitingTime: 0,
         confirmed: false,
-        rankRange: 0,
+        rankRange: 50,
         data: user.data,
         rank: user.data.ladder.points,
       };
@@ -149,7 +149,7 @@ export class MatchMakingRoom extends Room {
       // Everytime a client has waited more than 5 seconds,
       // we increment rankRange to find match eventually
       if (client.waitingTime > 5000) {
-        client.rankRange += 50;
+        client.rankRange += 1000; // A CHANGER EDGAR LE CON
         client.waitingTime = 0;
       }
 

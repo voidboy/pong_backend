@@ -43,15 +43,24 @@ export class ServiceRoom extends Room {
       console.log("FIRST CONNECTION -> ", user.data.id);
       users.set(user.data.id, new Session(user, client, "IDLE"));
     } else {
-      console.log("ALREADY CONNECTED -> ", user.data.id);
-      client.send("already-connected", {});
+      if (player.stateValue === "IN_RANKED") {
+        player.client = client;
+        player.client.send("state_incompatible", {
+          state: "IN_RANKED",
+          roomId: player.roomId,
+          sessionId: player.sessionId,
+        });
+      } else {
+        console.log("ALREADY CONNECTED -> ", user.data.id);
+        client.send("already-connected", {});
+      }
     }
-
     this.client_mapping.set(client, user.data.id);
   }
 
   onLeave(client: Client, consented: boolean) {
     const deleted_id = this.client_mapping.get(client);
+    const user = users.get(deleted_id);
     /* A REFAIRE POUR DOUBLE ONGLETS */
     this.client_mapping.delete(client);
     console.log("ServiceRoom -> Client left");
@@ -62,7 +71,8 @@ export class ServiceRoom extends Room {
       user until there is only 1 client linked to it */
       if (val === deleted_id) doNotDelete = true;
     });
-    if (!doNotDelete) users.delete(deleted_id);
+    if (!doNotDelete && user.stateValue !== "IN_RANKED")
+      users.delete(deleted_id);
   }
 
   onDispose() {
