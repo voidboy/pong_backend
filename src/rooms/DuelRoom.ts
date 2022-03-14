@@ -17,6 +17,8 @@ interface ClientInfo {
 export class DuelRoom extends Room {
   AllClients = new Map<number, ClientInfo>();
 
+  private client_mapping = new Map<Client, string>();
+
   onCreate(options: any) {
     console.log("DuelRoom -> OnCreate()");
     users = options.users;
@@ -41,7 +43,15 @@ export class DuelRoom extends Room {
         authorization: "bearer " + token,
       },
     });
+    this.onMessage("cancel", (client, message) => {
+      const client_id = this.client_mapping.get(client);
 
+      const player = users.get(client_id);
+      if (player) {
+        player.setState("IDLE");
+        client.leave();
+      }
+    });
     // Push in users map
     const player = users.get(user.data.id);
     if (player && player.stateValue === "IDLE") {
@@ -50,8 +60,18 @@ export class DuelRoom extends Room {
         client: client,
         data: user.data,
       });
-      const opponent = users.get(options.id2);
-      if (!opponent || opponent.stateValue !== "WAITING_DUEL") return;
+      this.client_mapping.set(client, user.data.id);
+      if (user.data.id === options.id1) {
+        const opponent = users.get(options.id2);
+        if (!opponent || opponent.stateValue !== "WAITING_DUEL") return;
+      } else if (user.data.id === options.id2) {
+        const opponent = users.get(options.id1);
+        if (!opponent || opponent.stateValue !== "WAITING_DUEL") {
+          player.setState("IDLE");
+          player.client.send("duel-expired");
+          return;
+        }
+      }
       const group = [
         this.AllClients.get(options.id1),
         this.AllClients.get(options.id2),
@@ -80,15 +100,24 @@ export class DuelRoom extends Room {
       rooms.set(newRoom.roomId, s);
     } else if (player) {
       const current_state = player.stateValue;
-      if (current_state === "IN_DUEL") {
-        const room = rooms.get(player.roomId);
-        player.client.send("state_incompatible", { state: "IN_DUEL", room: room });
-      } else if (current_state === "IN_RANKED") {
-        /* reconnection */
-        const room = rooms.get(player.roomId);
-        player.client.send("state_incompatible", { state: "IN_RANKED", room: room });
+      if (current_state === "IN_DUEL" || current_state === "IN_RANKED") {
+        player.client.send("state_incompatible", {
+          state: current_state,
+          roomId: player.roomId,
+          sessionId: player.sessionId,
+        });
       } else if (current_state === "WAITING_DUEL") {
+        const curr_player = this.AllClients.get(user.data.id);
+        if (curr_player) {
+          curr_player.client.leave();
+          this.client_mapping.delete(curr_player.client);
+          this.client_mapping.set(client, curr_player.data.id);
+          curr_player.client = client;
+        }
       } else if (current_state === "WAITING_RANKED") {
+        player.client.send("state_incompatible", {
+          state: "WAITING_RANKED",
+        });
       }
     } else {
       client.error(4042, "You must connect to serviceRoom first.");

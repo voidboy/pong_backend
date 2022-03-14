@@ -78,7 +78,7 @@ export class MatchMakingRoom extends Room {
         client: client,
         waitingTime: 0,
         confirmed: false,
-        rankRange: 50,
+        rankRange: 0,
         data: user.data,
         rank: user.data.ladder.points,
       };
@@ -88,19 +88,17 @@ export class MatchMakingRoom extends Room {
       /* Player NOT IDLE, callback on stateValue */
     } else if (player) {
       const current_state = player.stateValue;
-      if (current_state === "IN_DUEL") {
-        const room = rooms.get(player.roomId);
+      if (current_state === "IN_DUEL" || current_state === "IN_RANKED") {
         player.client.send("state_incompatible", {
-          state: "IN_DUEL",
-          room: room,
-        });
-      } else if (current_state === "IN_RANKED") {
-        player.client.send("state_incompatible", {
-          state: "IN_RANKED",
+          state: current_state,
           roomId: player.roomId,
           sessionId: player.sessionId,
         });
       } else if (current_state === "WAITING_DUEL") {
+        player.client.send("state_incompatible", {
+          state: "WAITING_DUEL",
+        });
+        client.leave();
       } else if (current_state === "WAITING_RANKED") {
         // if 2 tab for one user -> we destroy the previous client 'matchmaking'
         // to replace him by the new one then we need to send him the state 'WAITING_RANKED'
@@ -148,7 +146,7 @@ export class MatchMakingRoom extends Room {
 
       // Everytime a client has waited more than 5 seconds,
       // we increment rankRange to find match eventually
-      if (client.waitingTime > 5000) {
+      if (client.waitingTime > 3000) {
         client.rankRange += 50;
         client.waitingTime = 0;
       }
